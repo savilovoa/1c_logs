@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import re
+import sys
+import pathlib
+import os
+from os import path
 
 block_f = 0
 t_f = False
@@ -15,18 +19,21 @@ pattern_b = r'\{|\}|"'
 log_f = 0
 message = ""
 j = 0
-save_info = False
-fn_name = "2019022000099.lgp"
-err = open("error", "w")
-log = open("info1.txt", "w")
-m_i = [0,0,0,0]
+if len(sys.argv) > 1:
+    fn_name = sys.argv[1] # "d:/20190210000000.lgp"
+else:
+    fn_name = "d:/20190210000000.lgp"
+oi = 0
+#out_name = path.basename(fn_name)
+out_name = path.splitext(pathlib.Path(fn_name))[0] + ".ll"
+err = open("error", "w", encoding="utf-8")
+out = open(out_name, "w", encoding="utf-8")
 comm = False
 with open(fn_name, "r", encoding="utf-8") as fp:
     for i, line in enumerate(fp):
-        #print(i, line)
         if i > 2:
             if log_f == 0:
-                if re.fullmatch(pattern_0, line) != None:
+                if re.fullmatch(pattern_0, line) != None:                        
                     j += 1
                     message = line[:-1]
                     log_f = 1
@@ -61,9 +68,6 @@ with open(fn_name, "r", encoding="utf-8") as fp:
                                 comm = False
                                 mi = 2
                                 message = message + line[:-1]
-                                m_i[0] = m_i[0] + 1
-                                if m_i[0] < 5:
-                                    save_info = True
                             else:
                                 err.write('Error 1 line: ' + line)
                                 err.write(message + line)
@@ -80,16 +84,7 @@ with open(fn_name, "r", encoding="utf-8") as fp:
                     s = line[2]  
                     if s in ["U", "S", "R"]:
                         message = message + line[:-1]
-                        mi = 4
-                        if s == "S":
-                            m_i[1] = m_i[1] + 1
-                            if m_i[1] < 5:
-                                save_info = True
-                        elif s == "R":
-                            m_i[3] = m_i[3] + 1
-                            if m_i[3] < 5:
-                                save_info = True
-                                                    
+                        mi = 4                                                   
                     elif line[2] == "P":
                         log_f = 2
                         mi = 3
@@ -129,9 +124,6 @@ with open(fn_name, "r", encoding="utf-8") as fp:
                     if mi == 4:
                         s = s[:close_start] + '}\n'
                     message = message + s[:-1]
-                    m_i[2] = m_i[2] + 1
-                    if m_i[2] < 5:
-                        save_info = True
                     #print (log_f, line[:-1])
                 elif mi == 4:
                     if re.fullmatch(pattern_4, line) != None:
@@ -146,15 +138,18 @@ with open(fn_name, "r", encoding="utf-8") as fp:
                     if re.fullmatch(pattern_5, line) != None:
                         message = message + line[:-1]
                         log_f = 0
-                        if save_info:
-                            save_info = False
-                            log.write(message + '\n')
                         print ("{}: {}".format(j, message))
+                        out.write(message + "\n")
+                        if j % 1000 == 0:
+                            oi += 1
+                            out.close()
+                            out_name = "{}_{}.ll".format(path.splitext(pathlib.Path(fn_name))[0], oi)
+                            out = open(out_name, "w", encoding="utf-8")
+                        
                     else:
                         print ("Error line 5: " + line)
                         err.write('Error 5 line: ' + line)
                         err.write(message + line)
                         break
 err.close()
-log.close()
-print(i)
+out.close()
