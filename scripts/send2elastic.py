@@ -8,24 +8,29 @@ from os import path
 from elasticsearch import Elasticsearch
 from logs_1c import *
 import logging
+from datetime import datetime
 
 
 class send_2_elastic(scan_1c_logs):
-    def __init__(self, file_name: str, info: bool=False, connect=[{'host': 'localhost', 'port': 9200}]):
-        super(send_2_elastic, self).__init__(file_name, info)
-        self.connect = connect
-        self.index_name = ""        
+    connect = [{'host': 'localhost', 'port': 9200}]
+    index_name = ""
+    es = None
+    def __init__(self):        
+        super(send_2_elastic, self).__init__()
+        #self.connect = [{'host': 'localhost', 'port': 9200}]
+        #self.index_name = ""        
+        
                 
     def connect_elasticsearch(self):
         self.es = None
         self.es = Elasticsearch(self.connect)
         if self.es.ping():
-            print('Yay Connect')
+            return True
         else:
-            print('Awww it could not connect!')
+            return False
 
 
-    def create_index(index_name='erp_prod'):
+    def create_index(self, index_name='erp_prod'):
         created = False
         self.index_name = index_name
         # index settings
@@ -132,108 +137,65 @@ class send_2_elastic(scan_1c_logs):
         try:
             if not self.es.indices.exists(index_name):
                 # Ignore 400 means to ignore "Index Already Exist" error.
-                self.es.indices.create(index=index_name, ignore=400, body=settings)
-                print('Created Index')
+                self.es.indices.create(index=index_name, ignore=400, body=settings)                
             created = True
         except Exception as ex:
-            print(str(ex))
+            logging.error(str(ex))            
         finally:
             return created
 
-    def store_record(record):
+    def store_record(self, record):
         try:
             if self.index_name != "":
                 outcome = self.es.index(index=self.index_name, doc_type='log1c', body=record)
+                if self.info:
+                    logging.info('{}: {}'.format(self.index_name, record))                                                                
         except Exception as ex:
-            print('Error in indexing data')
-            print(str(ex))
+            logging.error(str(ex))
     
 
         
-    def __message_add__(self, mess):
+    def message_add(self, mess):
+        
+        user = dict(self.users).setdefault(mess[4])
+        comp = dict(self.computers).setdefault(mess[5])
+        appsname = dict(self.appsname).setdefault(mess[6])
+        event = dict(self.events).setdefault(mess[8])
+        mdata = dict(self.metadata).setdefault(mess[11])
+                                               
+        #mdata_guid = self.metadata_guid[mess[11]]
+        server = dict(self.servers).setdefault(mess[14])
+        p = dict(self.ports).setdefault(mess[15])
+        portadv = dict(self.portsadv).setdefault(mess[16])
         doc = {
-                '@timestamp': mess[0],
-                'path': mess[1],
-                "User": {
-                  "type": "keyword"
-                },
-                "UserId": {
-                  "type": "text"
-                },
-                "Data1": {
-                  "type": "text"
-                },
-                "Data2": {
-                  "type": "text"
-                },
-                "SecondIpPort": {
-                  "type": "text"
-                },
-                "Metadata": {
-                  "type": "keyword"
-                },
-                "MetadataId": {
-                  "type": "text"
-                },
-                "Importance": {
-                  "type": "text"
-                },
-                "MoreMetadata": {
-                  "type": "text"
-                },
-                "Computer": {
-                  "type": "keyword"
-                },
-                "ComputerId": {
-                  "type": "text"
-                },
-                "WorkServer": {
-                  "type": "keyword"
-                },
-                "WorkserverId": {
-                  "type": "text"
-                },
-                "Comment": {
-                  "type": "text"
-                },
-                "NumberTransaction": {
-                  "type": "text"
-                },
-                "Connection": {
-                  "type": "text"
-                },
-                "StatusTransaction": {
-                  "type": "text"
-                },
-                "MainIpPort": {
-                  "type": "text"
-                },
-                "Transaction": {
-                  "type": "text"
-                },
-                "NameApplication": {
-                  "type": "keyword"
-                },
-                "NameApplicationId": {
-                  "type": "text"
-                },
-                "RepresentationData": {
-                  "type": "text"
-                },
-                "Event": {
-                  "type": "keyword"
-                },
-                "EventId": {
-                  "type": "text"
-                },
-                "ArrayDataType": {
-                  "type": "text"
-                },
-                "Session": {
-                  "type": "text"
-                }
-                
+                '@timestamp': datetime.strptime(mess[0], "%Y%m%d%H%M%S"),                
+                "User": user,
+                "UserId": mess[4],
+                "Data1": mess[12],
+                "SecondIpPort": portadv,
+                "Metadata": mdata,
+                "MetadataId": mess[11],
+                "Importance": mess[9],
+                "MoreMetadata": mess[18],
+                "Computer": comp,
+                "ComputerId": mess[5],
+                "WorkServer": server,
+                "WorkserverId": mess[14],
+                "Comment": mess[10],
+                "NumberTransaction": mess[3],
+                "Connection": mess[7],
+                "StatusTransaction": mess[1],
+                "MainIpPort": p,
+                "Transaction": mess[2],
+                "NameApplication": appsname,
+                "NameApplicationId": mess[6],
+                "RepresentationData": mess[13],
+                "Event": event,
+                "EventId": mess[8],                
+                "Session": mess[17]                
             }
+        self.store_record(doc)
+        #print(doc)
 
     
 

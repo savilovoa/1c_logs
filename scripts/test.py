@@ -4,29 +4,24 @@ import sys
 from elasticsearch import Elasticsearch
 import logging
 from send2elastic import *
+import configparser
 
 
 if len(sys.argv) > 1:
     fn_name = sys.argv[1] # "d:/20190210000000.lgp"
 else:
-    fn_name = "d:/2019022000099.lgp"
+    fn_name = "d:/20190221000000.lgp"
 
-logging.basicConfig(filename = "1с_log_scan.log", level=logging.INFO)    
-#logs = scan_1c_logs(fn_name)
-#logs.scan_file()
-
-
-
-se = send_2_elastic(fn_name, False, [{'host': '192.168.30.32', 'port': 9200}])
-se.connect_elasticsearch()
+logging.basicConfig(filename = "1с_log_scan.log", level=logging.WARN)    
+logs = send_2_elastic(False, [{'host': 'elk.id.local', 'port': 9200}])
+if logs.connect_elasticsearch():
+    if logs.lgf_load("d:/1cv8.lgf"):
+        logs.create_index("erp_prod")
+        if logs.scan_file():
+            print("Ok")
+        
                     
 
-doc = {
-                'eng': elem[0][0].text.encode('utf-8'),
-                'rus': elem[1][0].text.encode('utf-8')
-            }
-
-    
 
 
 
