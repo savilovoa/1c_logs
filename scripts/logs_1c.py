@@ -410,18 +410,24 @@ class scan_1c_logs(object):
         finally:
             if self.runloglastpos and j > 0:
                 self.since_save()
+            if j > 0:
+                print("Load {}, current line {}".format(fn_name, j))
         return res
             
     def loads(self, logsdir="", rescan = False):
         if logsdir != "":
             self.logsdir = logsdir
         try:
+            i = 0
             while True:
-                print("Start scaning {}".format(self.logsdir))
+                if i > 1000 or i == 0:
+                    print("Start scaning {}".format(self.logsdir))
+                    i = 0
                 for fn_name in os.listdir(self.logsdir):
                 #print(os.path.join(self.logsdir, fn_name))
                     if fn_name.endswith(".lgp"):
                         self.scan_file(os.path.join(self.logsdir, fn_name))
+                i += 1            
                 if not rescan:
                     break
                 time.sleep(5)
