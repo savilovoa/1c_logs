@@ -6,7 +6,7 @@ import pathlib
 import os
 from os import path
 from elasticsearch import Elasticsearch
-from logs_1c import *
+from logs_1c import scan_1c_logs
 import logging
 from datetime import datetime
 
@@ -21,8 +21,9 @@ class send_2_elastic(scan_1c_logs):
         #self.index_name = ""        
         
                 
-    def connect_elasticsearch(self):
+    def connect_elasticsearch(self, connect = [{'host': 'localhost', 'port': 9200}]):
         self.es = None
+        self.connect = connect
         self.es = Elasticsearch(self.connect)
         if self.es.ping():
             return True
@@ -137,7 +138,7 @@ class send_2_elastic(scan_1c_logs):
         try:
             if not self.es.indices.exists(index_name):
                 # Ignore 400 means to ignore "Index Already Exist" error.
-                self.es.indices.create(index=index_name, ignore=400, body=settings)                
+                self.es.indices.create(index=index_name, body=settings)                
             created = True
         except Exception as ex:
             logging.error(str(ex))            
@@ -147,7 +148,7 @@ class send_2_elastic(scan_1c_logs):
     def store_record(self, record):
         try:
             if self.index_name != "":
-                outcome = self.es.index(index=self.index_name, doc_type='log1c', body=record)
+                self.es.index(index=self.index_name, doc_type='log1c', body=record)
                 if self.info:
                     logging.info('{}: {}'.format(self.index_name, record))                                                                
         except Exception as ex:

@@ -3,6 +3,12 @@
 import re
 import logging
 import configparser
+import os
+import json
+from os import path
+import time
+
+
 
 
 
@@ -31,17 +37,40 @@ class scan_1c_logs(object):
     servers = {}    #6
     ports = {}      #7
     portsadv = {}   #8        
-    
-    
+    sincefilename = "since.dat"
+    runloglastpos = True
+    sincedata = {}
+    logsdir = "../in"
         
     def __init__(self):        
         sett_filename = "logs_1c.conf"
         if os.path.exists(sett_filename):
             self.config = configparser.ConfigParser()
             self.config.read(sett_filename)
-            
-                
+            if self.config.has_option("GLOBAL", "runloglastpos"):
+                self.runloglastpos = self.config.getboolean("GLOBAL", "runloglastpos")
+            if self.config.has_option("GLOBAL", "logsdir"):
+                self.logsdir = self.config.get("GLOBAL", "logsdir")
+        self.since_load()
         
+            
+    def since_load(self):
+        if os.path.exists(self.sincefilename):
+            with open(self.sincefilename, "r") as sincefile:
+                js = sincefile.read()
+                if js != "":
+                    self.sincedata = json.loads(js)
+                
+    def since_find(self, filename):
+        return dict(self.sincedata).setdefault(filename, [])
+    
+    def since_save(self):
+        with open(self.sincefilename, "w") as sincefile:
+            json.dump(self.sincedata, sincefile)
+
+
+
+
     def lgf_add_dict(self, a):
         dict_type = int(a[0])
         if len(a) > 3:
@@ -160,11 +189,29 @@ class scan_1c_logs(object):
             elif (i > lenarr) and (not hardcheck):
                 return True
             else:
-                logging.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \nMessage: {}'.format(i, lenarr, l))
+                logging.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \n'.format(i, lenarr, l))
                 return False
             
-        
-        line_begin = 2
+        if self.runloglastpos:
+            fn_name0 = path.basename(fn_name)
+            fn_name_2_since = path.splitext(fn_name0)[0]
+            statbuf = os.stat(fn_name)
+            file_ts_mod = statbuf.st_mtime
+            f_since = self.since_find(fn_name_2_since)
+
+            if f_since != []:
+                line_begin = f_since[0]
+                stat_ts_mod = f_since[1]
+                if stat_ts_mod >= file_ts_mod:
+                    return True
+            else:
+                line_begin = 2
+            
+            
+            
+            
+        else:
+            line_begin = 2
         res = False
         len_figure = 0
         comm = False
@@ -266,7 +313,7 @@ class scan_1c_logs(object):
                                         mess_multiline = mess_multiline + line
                                         comm_multiline = comm_multiline + line
                                     else: 
-                                        logging.error('Error 1 line (find begin pattern, but close pattern 1 not run): .*",\d,\n: {} \nMessage: {}'.format(line, message))
+                                        logging.error('Error 1 line (find begin pattern, but close pattern 1 not run): .*",\n: {} \nMessage: {}'.format(line, message))
                                         res = False
                                         break                            
                                     
@@ -347,6 +394,8 @@ class scan_1c_logs(object):
                                     len_figure = 0
                                     self.message_add(mess)
                                     mess.clear()
+                                    if self.runloglastpos:
+                                        self.sincedata[fn_name_2_since] = [i, file_ts_mod] 
                                     res = True
                                     if self.info:
                                         logging.info('{}: {}'.format(j, message))                                                                
@@ -358,7 +407,26 @@ class scan_1c_logs(object):
         except Exception as ex:
             logging.error(str(ex))    
             res = False
+        finally:
+            if self.runloglastpos and j > 0:
+                self.since_save()
         return res
             
+    def loads(self, logsdir="", rescan = False):
+        if logsdir != "":
+            self.logsdir = logsdir
+        try:
+            while True:
+                print("Start scaning {}".format(self.logsdir))
+                for fn_name in os.listdir(self.logsdir):
+                #print(os.path.join(self.logsdir, fn_name))
+                    if fn_name.endswith(".lgp"):
+                        self.scan_file(os.path.join(self.logsdir, fn_name))
+                if not rescan:
+                    break
+                time.sleep(5)
+
+        except Exception as ex:
+            logging.error(str(ex))
         
     
