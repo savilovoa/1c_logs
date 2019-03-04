@@ -41,6 +41,9 @@ class scan_1c_logs(object):
     runloglastpos = True
     sincedata = {}
     logsdir = "../in"
+    lgf_loaded = False
+    rescan = False
+    rescan_sleep = 5
         
     def __init__(self):        
         sett_filename = "logs_1c.conf"
@@ -51,6 +54,11 @@ class scan_1c_logs(object):
                 self.runloglastpos = self.config.getboolean("GLOBAL", "runloglastpos")
             if self.config.has_option("GLOBAL", "logsdir"):
                 self.logsdir = self.config.get("GLOBAL", "logsdir")
+            if self.config.has_option("GLOBAL", "rescan"):
+                self.rescan = self.config.get("GLOBAL", "rescan")
+            if self.config.has_option("GLOBAL", "rescan_sleep"):
+                self.rescan_sleep = self.config.getint("GLOBAL", "rescan_sleep")
+                
         self.since_load()
         
             
@@ -70,7 +78,7 @@ class scan_1c_logs(object):
 
 
 
-
+    #  добавление новой записи в словарь
     def lgf_add_dict(self, a):
         dict_type = int(a[0])
         if len(a) > 3:
@@ -96,8 +104,16 @@ class scan_1c_logs(object):
         elif dict_type == 8:
             self.portsadv[key] = a[1]
     
+    # загрузка словаря данных
     def lgf_load(self, filename:str):
         try:
+            statbuf = os.stat(filename)
+            file_ts_mod = statbuf.st_mtime            
+            f_since = self.since_find("1cv8")
+            if f_since != []:                
+                stat_ts_mod = f_since[1]
+                if self.lgf_loaded  and (stat_ts_mod >= file_ts_mod):
+                    return True            
             with open(filename, "r", encoding="utf-8") as fp:
                 for i, line in enumerate(fp):
                     if i > 1:
@@ -126,7 +142,10 @@ class scan_1c_logs(object):
         except Exception as ex:
             logging.error('Error load lgf-file {}: {}'.format(filename, str(ex)))
             return False
-        
+        self.sincedata["1cv8"] = [0, file_ts_mod]
+        self.since_save
+        self.lgf_loaded = True
+        print("Load {}".format(filename))
         return True
     
     def message_add(self, mess):
@@ -414,7 +433,7 @@ class scan_1c_logs(object):
                 print("Load {}, current line {}".format(fn_name, j))
         return res
             
-    def loads(self, logsdir="", rescan = False):
+    def loads(self, logsdir=""):
         if logsdir != "":
             self.logsdir = logsdir
         try:
@@ -423,14 +442,18 @@ class scan_1c_logs(object):
                 if i > 1000 or i == 0:
                     print("Start scaning {}".format(self.logsdir))
                     i = 0
+                    
                 for fn_name in os.listdir(self.logsdir):
                 #print(os.path.join(self.logsdir, fn_name))
+                    if fn_name.endswith(".lgf"):
+                        self.lgf_load(os.path.join(self.logsdir, fn_name))
+                for fn_name in os.listdir(self.logsdir):
                     if fn_name.endswith(".lgp"):
                         self.scan_file(os.path.join(self.logsdir, fn_name))
                 i += 1            
-                if not rescan:
+                if not self.rescan:
                     break
-                time.sleep(5)
+                time.sleep(self.rescan_sleep)
 
         except Exception as ex:
             logging.error(str(ex))

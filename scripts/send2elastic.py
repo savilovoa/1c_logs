@@ -17,8 +17,6 @@ class send_2_elastic(scan_1c_logs):
     es = None
     def __init__(self):        
         super(send_2_elastic, self).__init__()
-        #self.connect = [{'host': 'localhost', 'port': 9200}]
-        #self.index_name = ""        
         
                 
     def connect_elasticsearch(self, connect = [{'host': 'localhost', 'port': 9200}]):
