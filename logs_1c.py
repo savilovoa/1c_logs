@@ -11,6 +11,7 @@ import time
 
 # настройка логгирования
 logger = logging.getLogger("logs_1c")
+logger.setLevel(logging.DEBUG)
 
 # create console handler and set level to info
 handler = logging.StreamHandler()
@@ -79,7 +80,7 @@ class scan_1c_logs(object):
                     handler.setLevel(logging.DEBUG)
                     handler.setFormatter(formatter)
                     logger.addHandler(handler)
-
+                    logger.setLevel(logging.DEBUG)
 
 
         self.since_load()

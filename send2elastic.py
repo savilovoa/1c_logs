@@ -78,7 +78,7 @@ class send_2_elastic(scan_1c_logs):
                     "type": "text"
                   },
                   "Importance": {
-                    "type": "text"
+                    "type": "keyword" 
                   },
                   "MoreMetadata": {
                     "type": "text"
