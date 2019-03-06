@@ -6,8 +6,7 @@ import pathlib
 import os
 from os import path
 from elasticsearch import Elasticsearch
-from logs_1c import scan_1c_logs
-import logging
+from logs_1c import scan_1c_logs, logger
 from datetime import datetime
 
 
@@ -15,13 +14,20 @@ class send_2_elastic(scan_1c_logs):
     connect = [{'host': 'localhost', 'port': 9200}]
     index_name = ""
     es = None
-    def __init__(self):        
+    def __init__(self):
         super(send_2_elastic, self).__init__()
-        
-                
-    def connect_elasticsearch(self, connect = [{'host': 'localhost', 'port': 9200}]):
+        if self.config.has_option("ELASTICSEARCH", "host"):
+             self.connect[0]['host'] = self.config.get("ELASTICSEARCH", "host")
+        if self.config.has_option("ELASTICSEARCH", "port"):
+            self.connect[0]["port"] = self.config.getint("ELASTICSEARCH", "port")
+        if self.config.has_option("ELASTICSEARCH", "index_name"):
+            self.index_name = self.config.get("ELASTICSEARCH", "index_name")
+
+
+    def connect_elasticsearch(self, connect = []):
         self.es = None
-        self.connect = connect
+        if connect != []:
+            self.connect = connect
         self.es = Elasticsearch(self.connect)
         if self.es.ping():
             return True
@@ -132,42 +138,42 @@ class send_2_elastic(scan_1c_logs):
               }
             },
             "aliases": {}
-        }        
+        }
         try:
             if not self.es.indices.exists(index_name):
                 # Ignore 400 means to ignore "Index Already Exist" error.
-                self.es.indices.create(index=index_name, body=settings)                
+                self.es.indices.create(index=index_name, body=settings)
             created = True
-        except Exception as ex:
-            logging.error(str(ex))            
+        except Exception:
+            logger.exception()
         finally:
             return created
 
-    def store_record(self, record):
+    def store_record(self, rec_id, record):
         try:
             if self.index_name != "":
-                self.es.index(index=self.index_name, doc_type='log1c', body=record)
+                self.es.index(index=self.index_name, id=rec_id, doc_type='log1c', body=record)
                 if self.info:
-                    logging.info('{}: {}'.format(self.index_name, record))                                                                
-        except Exception as ex:
-            logging.error(str(ex))
-    
+                    logger.info('{}: {}'.format(self.index_name, record))
+        except Exception:
+            logger.exception()
 
-        
-    def message_add(self, mess):
-        
+
+
+    def message_add(self, rec_id, mess):
+
         user = dict(self.users).setdefault(mess[4])
         comp = dict(self.computers).setdefault(mess[5])
         appsname = dict(self.appsname).setdefault(mess[6])
         event = dict(self.events).setdefault(mess[8])
         mdata = dict(self.metadata).setdefault(mess[11])
-                                               
+
         #mdata_guid = self.metadata_guid[mess[11]]
         server = dict(self.servers).setdefault(mess[14])
         p = dict(self.ports).setdefault(mess[15])
         portadv = dict(self.portsadv).setdefault(mess[16])
         doc = {
-                '@timestamp': datetime.strptime(mess[0], "%Y%m%d%H%M%S"),                
+                '@timestamp': datetime.strptime(mess[0], "%Y%m%d%H%M%S"),
                 "User": user,
                 "UserId": mess[4],
                 "Data1": mess[12],
@@ -190,17 +196,16 @@ class send_2_elastic(scan_1c_logs):
                 "NameApplicationId": mess[6],
                 "RepresentationData": mess[13],
                 "Event": event,
-                "EventId": mess[8],                
-                "Session": mess[17]                
+                "EventId": mess[8],
+                "Session": mess[17]
             }
-        self.store_record(doc)
-        #print(doc)
-
-    
+        self.store_record(rec_id, doc)
+        logger.debug("{} {}".format(rec_id, mess))
 
 
 
 
-    
-    
-
+logs = send_2_elastic()
+if logs.connect_elasticsearch():
+    if logs.create_index():
+        logs.loads()

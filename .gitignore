@@ -3,3 +3,6 @@
 in/*.lgp
 scripts/error
 scripts/*.log
+log/*
+__pycache__*
+__pycache__/*

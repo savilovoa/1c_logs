@@ -2,15 +2,28 @@
 
 import re
 import logging
+from logging.handlers import RotatingFileHandler
 import configparser
 import os
 import json
 from os import path
 import time
 
+# настройка логгирования
+logger = logging.getLogger("logs_1c")
 
+# create console handler and set level to info
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+formatter = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
-
+# create error file handler and set level to error
+handler = RotatingFileHandler('log/logs_1c_err.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+handler.setLevel(logging.ERROR)
+handler.setFormatter(formatter)
+logger.addHandler(handler)
 
 pattern_0 = r"\{\d{14},\w,\n"
 pattern_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,".*",\d+,\n'
@@ -25,7 +38,7 @@ pattern_lgf_1 = r'\{\d+,\w+-\w+-\w+-\w+-\w+,"[^"]*",\d+\}'
 pattern_lgf_2 = r'\{\d+,\d+,\d+\}'
 
 class scan_1c_logs(object):
-        
+
     info = False
     users = {}      #1
     users_guid = {}
@@ -36,7 +49,7 @@ class scan_1c_logs(object):
     metadata_guid = {}
     servers = {}    #6
     ports = {}      #7
-    portsadv = {}   #8        
+    portsadv = {}   #8
     sincefilename = "since.dat"
     runloglastpos = True
     sincedata = {}
@@ -44,8 +57,9 @@ class scan_1c_logs(object):
     lgf_loaded = False
     rescan = False
     rescan_sleep = 5
-        
-    def __init__(self):        
+    debug = False
+
+    def __init__(self):
         sett_filename = "logs_1c.conf"
         if os.path.exists(sett_filename):
             self.config = configparser.ConfigParser()
@@ -58,20 +72,29 @@ class scan_1c_logs(object):
                 self.rescan = self.config.get("GLOBAL", "rescan")
             if self.config.has_option("GLOBAL", "rescan_sleep"):
                 self.rescan_sleep = self.config.getint("GLOBAL", "rescan_sleep")
-                
+            if self.config.has_option("GLOBAL", "debug"):
+                self.debug = self.config.getboolean("GLOBAL", "debug")
+                if self.debug:
+                    handler = RotatingFileHandler('log/logs_1c.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+                    handler.setLevel(logging.DEBUG)
+                    handler.setFormatter(formatter)
+                    logger.addHandler(handler)
+
+
+
         self.since_load()
-        
-            
+
+
     def since_load(self):
         if os.path.exists(self.sincefilename):
             with open(self.sincefilename, "r") as sincefile:
                 js = sincefile.read()
                 if js != "":
                     self.sincedata = json.loads(js)
-                
+
     def since_find(self, filename):
         return dict(self.sincedata).setdefault(filename, [])
-    
+
     def since_save(self):
         with open(self.sincefilename, "w") as sincefile:
             json.dump(self.sincedata, sincefile)
@@ -103,17 +126,17 @@ class scan_1c_logs(object):
             self.ports[key] = a[1]
         elif dict_type == 8:
             self.portsadv[key] = a[1]
-    
+
     # загрузка словаря данных
     def lgf_load(self, filename:str):
         try:
             statbuf = os.stat(filename)
-            file_ts_mod = statbuf.st_mtime            
+            file_ts_mod = statbuf.st_mtime
             f_since = self.since_find("1cv8")
-            if f_since != []:                
+            if f_since != []:
                 stat_ts_mod = f_since[1]
                 if self.lgf_loaded  and (stat_ts_mod >= file_ts_mod):
-                    return True            
+                    return True
             with open(filename, "r", encoding="utf-8") as fp:
                 for i, line in enumerate(fp):
                     if i > 1:
@@ -124,36 +147,33 @@ class scan_1c_logs(object):
                         if len(re.findall(r'\{|\}', line)) % 2 == 0:
                             # убираем запятую
                             if line[len(line)-1] == ',':
-                                line = line[:-1]                    
+                                line = line[:-1]
                             if re.fullmatch(pattern_lgf_0, line) != None:
                                 self.lgf_add_dict(re.split(r',"|",|,', line[1:-1]))
-                                #print("Ok: ", m)
                             elif re.fullmatch(pattern_lgf_1, line) != None:
                                 self.lgf_add_dict(re.split(r',"|",|,', line[1:-1]))
-                                #print("Ok: ", m)
                             elif re.fullmatch(pattern_lgf_2, line) != None:
                                 self.lgf_add_dict(str(line[1:-1]).split(','))
-                                #print("Ok: ", m)
-                        
+
                             else:
-                                logging.error('Error load lgf-file {}, line: {}'.format(filename, line))
-                                return False                                                                           
-                        
-        except Exception as ex:
-            logging.error('Error load lgf-file {}: {}'.format(filename, str(ex)))
+                                logger.error('Error load lgf-file {}, line: {}'.format(filename, line))
+                                return False
+
+        except Exception:
+            logger.exception('Error load lgf-file {}'.format(filename))
             return False
         self.sincedata["1cv8"] = [0, file_ts_mod]
         self.since_save
         self.lgf_loaded = True
-        print("Load {}".format(filename))
+        logger.info("Load {}".format(filename))
         return True
-    
-    def message_add(self, mess):
-        #print(mess)
-        pass
-    
+
+    def message_add(self, rec_id, mess):
+        logger.debug("{} {}".format(rec_id, message))
+
+
     def scan_file(self, fn_name: str):
-        
+
         # разбор строки по полям
         # 1 - it {243391c7248f0,786be},4,2,1,14308,4,I,"",0,
         # 2 - it {243391c7248f0,786be},4,2,1,14308,4,I,"sdfsdfsdfsdfsd...
@@ -179,7 +199,7 @@ class scan_1c_logs(object):
             if matchtype in[2]:
                 a1 = str(a[1][1:]).split(",")
                 for d in a1:
-                    mess.append(d)                                            
+                    mess.append(d)
                     i += 1
             # here it is necessary to cut between the outermost commas
             elif matchtype in [1,3,4,5,6]:
@@ -187,30 +207,30 @@ class scan_1c_logs(object):
                 s = a[1][1:]
                 p1 = str(s).find('"')
                 # find end commas
-                p2 = len(s) - str(s[::-1]).find('"') - 1                
+                p2 = len(s) - str(s[::-1]).find('"') - 1
                 if matchtype == 1:
                     # разбираем по полям
                     a3 = str(s[:p1-1]).split(",")
                     for d in a3:
-                        mess.append(d)                                            
-                        i += 1               
+                        mess.append(d)
+                        i += 1
                 # добавляем комментарий от первой кавычки до последней
-                mess.append(s[p1+1:p2]) 
+                mess.append(s[p1+1:p2])
                 i += 1
                 a3 = str(s[p2+2:]).split(",")
                 for d in a3:
-                    mess.append(d)                                            
-                    i += 1               
-                    
-                
+                    mess.append(d)
+                    i += 1
+
+
             if i == lenarr:
                 return True
             elif (i > lenarr) and (not hardcheck):
                 return True
             else:
-                logging.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \n'.format(i, lenarr, l))
+                logger.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \n'.format(i, lenarr, l))
                 return False
-            
+
         if self.runloglastpos:
             fn_name0 = path.basename(fn_name)
             fn_name_2_since = path.splitext(fn_name0)[0]
@@ -225,10 +245,10 @@ class scan_1c_logs(object):
                     return True
             else:
                 line_begin = 2
-            
-            
-            
-            
+
+
+
+
         else:
             line_begin = 2
         res = False
@@ -240,8 +260,8 @@ class scan_1c_logs(object):
         j = 0
         mi = 0
         try:
-            # mess - структура 
-            # 0    - дата 14 цифр, 
+            # mess - структура
+            # 0    - дата 14 цифр,
             # 1    - транзакция "N" – "Отсутствует", "U" – "Зафиксирована", "R" – "Не завершена" и "C" – "Отменена";
             # 2, 3    - Транзакция в формате записи из двух элементов преобразованных в шестнадцатеричное число – первый – число секунд с 01.01.0001 00:00:00 умноженное на 10000, второй – номер транзакции;
             # 4    - пользователь
@@ -263,7 +283,7 @@ class scan_1c_logs(object):
                 for i, line in enumerate(fp):
                     if i > line_begin:
                         if len_figure == 0:
-                            if re.fullmatch(pattern_0, line) != None:                        
+                            if re.fullmatch(pattern_0, line) != None:
                                 j += 1
                                 message = line[:-1]
                                 len_figure = 1
@@ -275,7 +295,7 @@ class scan_1c_logs(object):
                             if mi == 1:
                                 mc = re.findall('"', line)
                                 mc_len = len(mc)
-                                mc_ch = len(mc) % 2                    
+                                mc_ch = len(mc) % 2
                                 if not comm:
                                     if mc_ch == 0:
                                         # в одну строчку
@@ -287,61 +307,61 @@ class scan_1c_logs(object):
                                             if not line_to_arr(mess, line[1:-2], 1, 10):
                                                 res = False
                                                 break
-                                        # в несколько строчек        
+                                        # в несколько строчек
                                         elif re.fullmatch(pattern_1_1, line):
                                             comm = True
-                                            message = message + line                                
-                                            mess_multiline = line                                            
-                                            p1 = str(line[1:]).find('"')                                        
-                                            comm_multiline = line[p1+1:]                                        
-                                            if not line_to_arr(mess, line[1:p1], 2, 8):                                            
+                                            message = message + line
+                                            mess_multiline = line
+                                            p1 = str(line[1:]).find('"')
+                                            comm_multiline = line[p1+1:]
+                                            if not line_to_arr(mess, line[1:p1], 2, 8):
                                                 res = False
                                                 break
                                         else:
-                                            logging.error('Error 1: {} \nMessage: {}'.format(line, message))
+                                            logger.error('Error 1: {} \nMessage: {}'.format(line, message))
                                             res = False
                                             break
                                     else:
                                         comm = True
-                                        message = message + line                            
+                                        message = message + line
                                         mess_multiline = line
-                                        p1 = str(line[1:]).find('"')                                        
-                                        comm_multiline = line[p1+1:]                                        
-                                        if not line_to_arr(mess, line[1:p1], 2, 8):                                            
+                                        p1 = str(line[1:]).find('"')
+                                        comm_multiline = line[p1+1:]
+                                        if not line_to_arr(mess, line[1:p1], 2, 8):
                                             res = False
                                             break
-                                    
+
                                 else:
                                     mc = re.findall('"', line)
                                     mc_len = len(mc)
                                     mc_ch = len(mc) % 2
-                                    if (mc_ch != 0) and(mc_len != 0) : 
+                                    if (mc_ch != 0) and(mc_len != 0) :
                                         if re.fullmatch(r'.*",\d+,\n', line) != None:
                                             comm = False
                                             mi = 2
-                                            message = message + line[:-1]                                            
+                                            message = message + line[:-1]
                                             p2 = len(line) - str(line[::-1]).find('"') - 1
                                             mess.append(comm_multiline + line[:p2-1])
                                             mess.append(line[p2+2:-2])
                                         else:
-                                            logging.error('Error 1: {} \nMessage: {}'.format(line, message))
+                                            logger.error('Error 1: {} \nMessage: {}'.format(line, message))
                                             res = False
-                                            break                                
+                                            break
                                     elif re.fullmatch(pattern_0, line) == None:
                                         message = message + line
                                         mess_multiline = mess_multiline + line
                                         comm_multiline = comm_multiline + line
-                                    else: 
-                                        logging.error('Error 1 line (find begin pattern, but close pattern 1 not run): .*",\n: {} \nMessage: {}'.format(line, message))
+                                    else:
+                                        logger.error('Error 1 line (find begin pattern, but close pattern 1 not run): .*",\n: {} \nMessage: {}'.format(line, message))
                                         res = False
-                                        break                            
-                                    
-                                    
+                                        break
+
+
                             elif mi == 2:
-                                s = line[2]  
+                                s = line[2]
                                 if s in ["U", "S", "R"]:
                                     message = message + line[:-1]
-                                    mi = 4               
+                                    mi = 4
                                     if s == "U":
                                         if not line_to_arr(mess, line[1:-2], 3, 7):
                                             res = False
@@ -349,17 +369,17 @@ class scan_1c_logs(object):
                                     elif s == "S":
                                         if not line_to_arr(mess, line[1:-2], 4, 7):
                                             res = False
-                                            break                         
+                                            break
                                     elif s == "R":
                                         if not line_to_arr(mess, line[1:-2], 5, 7):
                                             res = False
-                                            break                         
-                                        
+                                            break
+
                                 elif line[2] == "P":
                                     len_figure = 2
                                     mi = 3
                                     comm = False
-                                    l = line[:3]                        
+                                    l = line[:3]
                                     for a in line[3:]:
                                         if a == '}':
                                             len_figure = 1
@@ -372,67 +392,67 @@ class scan_1c_logs(object):
                                             l = l + a
                                     message = message + l[:-1]
                                     mess_multiline = l
-                                    
+
                             elif mi == 3:
-                                l = "" 
+                                l = ""
                                 for m in re.finditer(pattern_b, line):
                                     a = m.group()
                                     if a == '}':
-                                        if not comm: 
+                                        if not comm:
                                             len_figure -= 1
                                             if len_figure == 1:
                                                 mi = 4
-                                                close_start = m.start()                                                   
+                                                close_start = m.start()
                                                 break
                                     elif a == '{':
                                         if not comm:
                                             len_figure += 1
                                     elif a == '"':
                                         comm = not comm
-                                               
+
                                 s  = re.sub(r'\{', "[", line)
                                 s = re.sub(r'\}', "]", s)
-                                if mi == 4:                                    
+                                if mi == 4:
                                     mess.append(mess_multiline[1:])
                                     if not line_to_arr(mess, s[close_start+1:-2], 6, 6, False):
                                         res = False
-                                        break                                    
-                                message = message + s[:-1]                
-                                
+                                        break
+                                message = message + s[:-1]
+
                             elif mi == 4:
                                 if re.fullmatch(pattern_4, line) != None:
                                     message = message + line[:-1]
-                                    mi = 5                                    
+                                    mi = 5
                                 else:
-                                    logging.error('Error 4: {} \nMessage: {}'.format(line, message))
+                                    logger.error('Error 4: {} \nMessage: {}'.format(line, message))
                                     res = False
                                     break
                             elif mi == 5:
                                 if re.fullmatch(pattern_5, line) != None:
                                     message = message + line[:-1]
                                     len_figure = 0
-                                    self.message_add(mess)
+                                    self.message_add("{}_{}".format(fn_name_2_since, i), mess)
                                     mess.clear()
                                     if self.runloglastpos:
-                                        self.sincedata[fn_name_2_since] = [i, file_ts_mod] 
+                                        self.sincedata[fn_name_2_since] = [i, file_ts_mod]
                                     res = True
                                     if self.info:
-                                        logging.info('{}: {}'.format(j, message))                                                                
+                                        logger.info('{}: {}'.format(j, message))
                                 else:
-                                    logging.error('Error 5: {} \nMessage: {}'.format(line, message))
+                                    logger.error('Error 5: {} \nMessage: {}'.format(line, message))
                                     res = False
                                     break
-                        
-        except Exception as ex:
-            logging.error(str(ex))    
+
+        except Exception:
+            logger.exception()
             res = False
         finally:
             if self.runloglastpos and j > 0:
                 self.since_save()
             if j > 0:
-                print("Load {}, current line {}".format(fn_name, j))
+                logger.info("Load {}, current line {}".format(fn_name, j))
         return res
-            
+
     def loads(self, logsdir=""):
         if logsdir != "":
             self.logsdir = logsdir
@@ -440,9 +460,9 @@ class scan_1c_logs(object):
             i = 0
             while True:
                 if i > 1000 or i == 0:
-                    print("Start scaning {}".format(self.logsdir))
+                    logger.info("Start scaning {}".format(self.logsdir))
                     i = 0
-                    
+
                 for fn_name in os.listdir(self.logsdir):
                 #print(os.path.join(self.logsdir, fn_name))
                     if fn_name.endswith(".lgf"):
@@ -450,12 +470,10 @@ class scan_1c_logs(object):
                 for fn_name in os.listdir(self.logsdir):
                     if fn_name.endswith(".lgp"):
                         self.scan_file(os.path.join(self.logsdir, fn_name))
-                i += 1            
+                i += 1
                 if not self.rescan:
                     break
                 time.sleep(self.rescan_sleep)
 
-        except Exception as ex:
-            logging.error(str(ex))
-        
-    
+        except Exception:
+            logger.exception()
