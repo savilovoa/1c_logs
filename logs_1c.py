@@ -21,10 +21,10 @@ handler.setFormatter(formatter)
 logger.addHandler(handler)
 
 # create error file handler and set level to error
-handler = RotatingFileHandler('log/logs_1c_err.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
-handler.setLevel(logging.ERROR)
-handler.setFormatter(formatter)
-logger.addHandler(handler)
+handler2 = RotatingFileHandler('log/logs_1c_err.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+handler2.setLevel(logging.ERROR)
+handler2.setFormatter(formatter)
+logger.addHandler(handler2)
 
 pattern_0 = r"\{\d{14},\w,\n"
 pattern_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,".*",\d+,\n'
@@ -40,7 +40,6 @@ pattern_lgf_2 = r'\{\d+,\d+,\d+\}'
 
 class scan_1c_logs(object):
 
-    info = False
     users = {}      #1
     users_guid = {}
     computers = {}  #2
@@ -419,6 +418,7 @@ class scan_1c_logs(object):
                                         res = False
                                         break
                                 message = message + s[:-1]
+                                mess_multiline = mess_multiline + s
 
                             elif mi == 4:
                                 if re.fullmatch(pattern_4, line) != None:
@@ -437,8 +437,7 @@ class scan_1c_logs(object):
                                     if self.runloglastpos:
                                         self.sincedata[fn_name_2_since] = [i, file_ts_mod]
                                     res = True
-                                    if self.info:
-                                        logger.info('{}: {}'.format(j, message))
+                                    logger.info('{}: {}'.format(j, message))
                                 else:
                                     logger.error('Error 5: {} \nMessage: {}'.format(line, message))
                                     res = False

@@ -153,8 +153,7 @@ class send_2_elastic(scan_1c_logs):
         try:
             if self.index_name != "":
                 self.es.index(index=self.index_name, id=rec_id, doc_type='log1c', body=record)
-                if self.info:
-                    logger.info('{}: {}'.format(self.index_name, record))
+                logger.info('{}: {}'.format(self.index_name, record))
         except Exception:
             logger.exception()
 
