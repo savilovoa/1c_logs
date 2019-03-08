@@ -2,7 +2,6 @@
 
 import re
 import sys
-import pathlib
 import os
 from os import path
 from elasticsearch import Elasticsearch
@@ -28,10 +27,14 @@ class send_2_elastic(scan_1c_logs):
         self.es = None
         if connect != []:
             self.connect = connect
-        self.es = Elasticsearch(self.connect)
-        if self.es.ping():
-            return True
-        else:
+        try:
+            self.es = Elasticsearch(self.connect)
+            if self.es.ping():
+                return True
+            else:
+                return False
+        except:
+            logger.exception()
             return False
 
 
@@ -78,7 +81,7 @@ class send_2_elastic(scan_1c_logs):
                     "type": "text"
                   },
                   "Importance": {
-                    "type": "keyword" 
+                    "type": "keyword"
                   },
                   "MoreMetadata": {
                     "type": "text"

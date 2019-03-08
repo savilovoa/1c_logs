@@ -20,11 +20,6 @@ formatter = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
-# create error file handler and set level to error
-handler2 = RotatingFileHandler('log/logs_1c_err.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
-handler2.setLevel(logging.ERROR)
-handler2.setFormatter(formatter)
-logger.addHandler(handler2)
 
 pattern_0 = r"\{\d{14},\w,\n"
 pattern_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,".*",\d+,\n'
@@ -61,25 +56,43 @@ class scan_1c_logs(object):
 
     def __init__(self):
         sett_filename = "logs_1c.conf"
+        if os.path.exists(os.path.join("/usr/local/etc/1c_logs", sett_filename)):
+            sett_filename = os.path.join("/usr/local/etc/1c_logs", "logs_1c.conf")
         if os.path.exists(sett_filename):
             self.config = configparser.ConfigParser()
             self.config.read(sett_filename)
             if self.config.has_option("GLOBAL", "runloglastpos"):
                 self.runloglastpos = self.config.getboolean("GLOBAL", "runloglastpos")
-            if self.config.has_option("GLOBAL", "logsdir"):
-                self.logsdir = self.config.get("GLOBAL", "logsdir")
+            if self.config.has_option("GLOBAL", "dirdata"):
+                self.logsdir = self.config.get("GLOBAL", "dirdata")
             if self.config.has_option("GLOBAL", "rescan"):
                 self.rescan = self.config.get("GLOBAL", "rescan")
             if self.config.has_option("GLOBAL", "rescan_sleep"):
                 self.rescan_sleep = self.config.getint("GLOBAL", "rescan_sleep")
+            if self.config.has_option("GLOBAL", "dirlog"):
+                dirlog = self.config.get("GLOBAL", "dirlog")
+                log_filename = os.path.join(dirlog, 'logs_1c.log')
+                logerr_filename = os.path.join(dirlog, 'logs_1c_err.log')
+            else:
+                log_filename = "logs_1c.log"
+                logerr_filename = 'logs_1c_err.log'
+            if self.config.has_option("GLOBAL", "dirsince"):
+                self.sincefilename = os.path.join(self.config.get("GLOBAL", "dirsince"), "since.dat")
+
+            # create error file handler and set level to error
+            handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+            handler2.setLevel(logging.ERROR)
+            handler2.setFormatter(formatter)
+            logger.addHandler(handler2)
+
             if self.config.has_option("GLOBAL", "debug"):
                 self.debug = self.config.getboolean("GLOBAL", "debug")
                 if self.debug:
-                    handler = RotatingFileHandler('log/logs_1c.log', mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+                    handler = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
                     handler.setLevel(logging.DEBUG)
                     handler.setFormatter(formatter)
                     logger.addHandler(handler)
-                    logger.setLevel(logging.DEBUG)
+                    #logger.setLevel(logging.DEBUG)
 
 
         self.since_load()
@@ -128,7 +141,7 @@ class scan_1c_logs(object):
             self.portsadv[key] = a[1]
 
     # загрузка словаря данных
-    def lgf_load(self, filename:str):
+    def lgf_load(self, filename):
         try:
             statbuf = os.stat(filename)
             file_ts_mod = statbuf.st_mtime
@@ -172,7 +185,7 @@ class scan_1c_logs(object):
         logger.debug("{} {}".format(rec_id, message))
 
 
-    def scan_file(self, fn_name: str):
+    def scan_file(self, fn_name):
 
         # разбор строки по полям
         # 1 - it {243391c7248f0,786be},4,2,1,14308,4,I,"",0,
