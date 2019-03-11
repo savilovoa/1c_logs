@@ -194,6 +194,7 @@ class scan_1c_logs(object):
         # 4 - it {"S","Обработки.ЖурналДокументовВнутреннегоТовародвижения.СформироватьГиперссылкуКОформлениюФоновоеЗадание"},"",1,1,0,716,0,
         # 5 - it {"R",971:811200505680a44e11e93552811c5926},"Сборка (разборка) товаров 0000-001512 от 21.02.2019 0:00:07",1,1,0,715,0,
         # 6 - it "",1,9,0,107,0,
+        # 7 - it {"N",5660},"",1,2,0,248,0,
         def line_to_arr(m, l, matchtype, lenarr, hardcheck = True):
             i = 0
             if matchtype != 6:
@@ -372,7 +373,7 @@ class scan_1c_logs(object):
 
                             elif mi == 2:
                                 s = line[2]
-                                if s in ["U", "S", "R"]:
+                                if s in ["U", "S", "R", "N"]:
                                     message = message + line[:-1]
                                     mi = 4
                                     if s == "U":
@@ -387,7 +388,10 @@ class scan_1c_logs(object):
                                         if not line_to_arr(mess, line[1:-2], 5, 7):
                                             res = False
                                             break
-
+                                    elif s == "N":
+                                        if not line_to_arr(mess, line[1:-2], 5, 7):
+                                            res = False
+                                            break                                            
                                 elif line[2] == "P":
                                     len_figure = 2
                                     mi = 3
@@ -405,6 +409,9 @@ class scan_1c_logs(object):
                                             l = l + a
                                     message = message + l[:-1]
                                     mess_multiline = l
+                                else:
+                                    raise RuntimeError("Unknown type {} - expect [U,S,R,P]".format(line[2]))
+                                
 
                             elif mi == 3:
                                 l = ""
@@ -461,9 +468,11 @@ class scan_1c_logs(object):
             res = False
         finally:
             if self.runloglastpos and j > 0:
+                if not res:
+                    self.sincedata[fn_name_2_since][1] = 0
                 self.since_save()
             if j > 0:
-                logger.info("Load {}, current line {}".format(fn_name, j))
+                logger.info("Load {}, current line {}".format(fn_name, i))
         return res
 
     def loads(self, logsdir=""):
