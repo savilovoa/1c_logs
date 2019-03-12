@@ -498,6 +498,7 @@ class scan_1c_logs(object):
                 i += 1
                 if not self.rescan:
                     break
+                logger.info("Sleep {}".format(self.rescan_sleep))
                 time.sleep(self.rescan_sleep)
 
         except Exception:
