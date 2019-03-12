@@ -177,6 +177,9 @@ class send_2_elastic(scan_1c_logs):
         appsname = dict(self.appsname).setdefault(mess[6])
         event = dict(self.events).setdefault(mess[8])
         mdata = dict(self.metadata).setdefault(mess[11])
+        if user == 'wsdl' and  mess[12] == "U" and mess[11] == 0 and mess[10] == "":
+            logger.debug("Skip {} {}".format(rec_id, mess))
+            return False
 
         #mdata_guid = self.metadata_guid[mess[11]]
         server = dict(self.servers).setdefault(mess[14])
@@ -212,6 +215,7 @@ class send_2_elastic(scan_1c_logs):
         index_date = mess[0][:8]
         self.store_record(rec_id, doc, index_date)
         logger.debug("{} {}".format(rec_id, mess))
+        return True
 
 
 
