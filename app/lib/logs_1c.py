@@ -173,6 +173,7 @@ class scan_1c_logs(object):
                                 return False
 
         except Exception:
+            logger.error('Error load lgf-file {}'.format(filename))
             logger.exception('Error load lgf-file {}'.format(filename))
             return False
         self.sincedata["1cv8"] = [0, file_ts_mod]
@@ -464,12 +465,14 @@ class scan_1c_logs(object):
                                     break
 
         except Exception:
+            logger.error(str(Exception))
             logger.exception()
             res = False
         finally:
             if self.runloglastpos and j > 0:
                 if not res:
-                    self.sincedata[fn_name_2_since][1] = 0
+                    f_since = self.since_find(fn_name_2_since)
+                    self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
                 self.since_save()
             if j > 0:
                 logger.info("Load {}, current line {}".format(fn_name, i))
@@ -498,4 +501,5 @@ class scan_1c_logs(object):
                 time.sleep(self.rescan_sleep)
 
         except Exception:
+            logger.error(str(Exception))
             logger.exception()

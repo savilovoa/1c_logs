@@ -7,7 +7,7 @@ from os import path
 from elasticsearch import Elasticsearch
 from logs_1c import scan_1c_logs, logger
 from datetime import datetime
-
+import time
 
 class send_2_elastic(scan_1c_logs):
     connect = [{'host': 'localhost', 'port': 9200}]
@@ -34,11 +34,11 @@ class send_2_elastic(scan_1c_logs):
             else:
                 return False
         except:
-            logger.exception()
+            logger.error("Connection in {}".format(self.connect))
             return False
 
 
-    def create_index(self, index_name='erp_prod'):
+    def create_index(self, index_name='erp_prod', index_date=""):
         created = False
         self.index_name = index_name
         # index settings
@@ -143,21 +143,29 @@ class send_2_elastic(scan_1c_logs):
             "aliases": {}
         }
         try:
-            if not self.es.indices.exists(index_name):
+            i = index_name+index_date
+            if not self.es.indices.exists(i):
                 # Ignore 400 means to ignore "Index Already Exist" error.
-                self.es.indices.create(index=index_name, body=settings)
+                self.es.indices.create(index=i, body=settings)
+                logger.info('create index {}'.format(i))
             created = True
         except Exception:
             logger.exception()
         finally:
             return created
 
-    def store_record(self, rec_id, record):
+    def store_record(self, rec_id, record, indexdate=""):
         try:
             if self.index_name != "":
-                self.es.index(index=self.index_name, id=rec_id, doc_type='log1c', body=record)
-                logger.info('{}: {}'.format(self.index_name, record))
+                if indexdate != "":
+                    if not self.create_index(self.index_name, indexdate):
+                        raise RuntimeError("Not create index {}".format(self.index_name + indexdate))
+                self.es.index(index=self.index_name + indexdate, id=rec_id, doc_type='log1c', body=record)                                    
+                logger.info('{}: {}'.format(self.index_name + indexdate, record))
+            else:
+                raise RuntimeError("Not index name")
         except Exception:
+            logger.error("STORE RECORD {} {}".format(rec_id, record))
             logger.exception()
 
 
@@ -201,13 +209,19 @@ class send_2_elastic(scan_1c_logs):
                 "EventId": mess[8],
                 "Session": mess[17]
             }
-        self.store_record(rec_id, doc)
+        index_date = mess[0][:8]
+        self.store_record(rec_id, doc, index_date)
         logger.debug("{} {}".format(rec_id, mess))
 
 
 
 
+i = 0
 logs = send_2_elastic()
-if logs.connect_elasticsearch():
-    if logs.create_index():
+while True:
+    if logs.connect_elasticsearch():   
         logs.loads()
+    time.sleep(30)
+    i += 1
+    if i > 1000:
+        Exit(1)
