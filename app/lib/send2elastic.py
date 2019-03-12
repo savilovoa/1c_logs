@@ -177,7 +177,8 @@ class send_2_elastic(scan_1c_logs):
         appsname = dict(self.appsname).setdefault(mess[6])
         event = dict(self.events).setdefault(mess[8])
         mdata = dict(self.metadata).setdefault(mess[11])
-        if user == 'wsdl' and  mess[12] == "U" and mess[11] == 0 and mess[10] == "":
+        print(user, mess[12], mess[11], mess[10])
+        if user == "wsdl" and mess[10] == '' and mess[11]=="0" and mess[9] == "I":            
             logger.debug("Skip {} {}".format(rec_id, mess))
             return False
 
