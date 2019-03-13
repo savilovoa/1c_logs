@@ -15,7 +15,7 @@ logger.setLevel(logging.DEBUG)
 
 # create console handler and set level to info
 handler = logging.StreamHandler()
-handler.setLevel(logging.INFO)
+handler.setLevel(logging.DEBUG)
 formatter = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -79,20 +79,21 @@ class scan_1c_logs(object):
             if self.config.has_option("GLOBAL", "dirsince"):
                 self.sincefilename = os.path.join(self.config.get("GLOBAL", "dirsince"), "since.dat")
 
+            if self.config.has_option("GLOBAL", "debug"):
+                self.debug = self.config.getboolean("GLOBAL", "debug")
             # create error file handler and set level to error
             handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
             handler2.setLevel(logging.ERROR)
             handler2.setFormatter(formatter)
             logger.addHandler(handler2)
 
-            if self.config.has_option("GLOBAL", "debug"):
-                self.debug = self.config.getboolean("GLOBAL", "debug")
-                if self.debug:
-                    handler = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
-                    handler.setLevel(logging.DEBUG)
-                    handler.setFormatter(formatter)
-                    logger.addHandler(handler)
-                    #logger.setLevel(logging.DEBUG)
+            handler = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+            if self.debug:
+                handler.setLevel(logging.DEBUG)
+            else:
+                handler.setLevel(logging.INFO)
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
 
 
         self.since_load()
@@ -173,8 +174,7 @@ class scan_1c_logs(object):
                                 return False
 
         except Exception:
-            logger.error('Error load lgf-file {}'.format(filename))
-            logger.exception('Error load lgf-file {}'.format(filename))
+            logger.error('Error load lgf-file {}'.format(filename), exc_info=True)            
             return False
         self.sincedata["1cv8"] = [0, file_ts_mod]
         self.since_save
@@ -245,7 +245,8 @@ class scan_1c_logs(object):
             else:
                 logger.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \n'.format(i, lenarr, l))
                 return False
-
+        
+        
         if self.runloglastpos:
             fn_name0 = path.basename(fn_name)
             fn_name_2_since = path.splitext(fn_name0)[0]
@@ -256,16 +257,14 @@ class scan_1c_logs(object):
             if f_since != []:
                 line_begin = f_since[0]
                 stat_ts_mod = f_since[1]
-                if stat_ts_mod >= file_ts_mod:
+                if stat_ts_mod >= file_ts_mod:                    
                     return True
             else:
                 line_begin = 2
-
-
-
-
+            
         else:
             line_begin = 2
+        logger.info("start check file: {}. Position {}".format(fn_name0, line_begin))
         res = False
         len_figure = 0
         comm = False
@@ -458,7 +457,7 @@ class scan_1c_logs(object):
                                     if self.runloglastpos:
                                         self.sincedata[fn_name_2_since] = [i, file_ts_mod]
                                     res = True
-                                    logger.info('{}: {}'.format(j, message))
+                                    logger.debug('{}: {}'.format(j, message))
                                 else:
                                     logger.error('Error 5: {} \nMessage: {}'.format(line, message))
                                     res = False
@@ -498,9 +497,9 @@ class scan_1c_logs(object):
                 i += 1
                 if not self.rescan:
                     break
-                logger.info("Sleep {}".format(self.rescan_sleep))
+                logger.debug("Sleep {}".format(self.rescan_sleep))
                 time.sleep(self.rescan_sleep)
 
         except Exception:
-            logger.error(str(Exception))
-            logger.exception()
+            logger.error("Error scan files", exc_info=True)
+            
