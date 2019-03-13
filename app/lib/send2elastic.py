@@ -165,7 +165,7 @@ class send_2_elastic(scan_1c_logs):
             else:
                 raise RuntimeError("Not index name")
         except Exception:
-            logger.error("STORE RECORD {} {}".format(rec_id, record), exc_info=True)
+            logger.error("STORE RECORD {} {} {}".format(self.index_name + indexdate, rec_id, record), exc_info=True)
             
 
 
@@ -213,7 +213,7 @@ class send_2_elastic(scan_1c_logs):
                 "EventId": mess[8],
                 "Session": mess[17]
             }
-        index_date = mess[0][:8]
+        index_date = "-"+mess[0][:8]
         self.store_record(rec_id, doc, index_date)
         logger.debug("{} {}".format(rec_id, mess))
         return True
