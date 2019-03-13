@@ -13,10 +13,12 @@ import time
 logger = logging.getLogger("logs_1c")
 logger.setLevel(logging.INFO)
 
+formatter_err = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
 # create console handler and set level to info
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
+
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
@@ -84,16 +86,16 @@ class scan_1c_logs(object):
             # create error file handler and set level to error
             handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
             handler2.setLevel(logging.ERROR)
-            handler2.setFormatter(formatter)
+            handler2.setFormatter(formatter_err)
             logger.addHandler(handler2)
 
-            handler = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+            handler3 = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
             if self.debug:
-                handler.setLevel(logging.DEBUG)
+                handler3.setLevel(logging.DEBUG)
             else:
-                handler.setLevel(logging.INFO)
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
+                handler3.setLevel(logging.INFO)
+            handler3.setFormatter(formatter)
+            logger.addHandler(handler3)
 
 
         self.since_load()
@@ -391,7 +393,12 @@ class scan_1c_logs(object):
                                     elif s == "N":
                                         if not line_to_arr(mess, line[1:-2], 5, 7):
                                             res = False
-                                            break                                            
+                                            break      
+                                    elif s == "D":
+                                        if not line_to_arr(mess, line[1:-2], 5, 7):
+                                            res = False
+                                            break      
+                                        
                                 elif line[2] == "P":
                                     len_figure = 2
                                     mi = 3

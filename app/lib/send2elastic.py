@@ -231,4 +231,5 @@ while True:
     time.sleep(30)
     i += 1
     if i > 1000:
-        Exit(1)
+        logger.error("Not connection in {}".format(self.connect))
+        sys.exit(1)
