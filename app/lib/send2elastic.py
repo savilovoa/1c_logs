@@ -30,8 +30,10 @@ class send_2_elastic(scan_1c_logs):
         try:
             self.es = Elasticsearch(self.connect)
             if self.es.ping():
+                logger.info("Connection SUCCESS!")
                 return True
             else:
+                logger.info("Not connection in {}".format(self.connect))
                 return False
         except:
             logger.error("Connection in {}".format(self.connect))

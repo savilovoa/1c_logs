@@ -11,7 +11,7 @@ import time
 
 # настройка логгирования
 logger = logging.getLogger("logs_1c")
-#logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 # create console handler and set level to info
 handler = logging.StreamHandler()
