@@ -259,7 +259,7 @@ class scan_1c_logs(object):
             if f_since != []:
                 line_begin = f_since[0]
                 stat_ts_mod = f_since[1]
-                logger.info("start check file: {}. save mod {}, file mod  {}".format(fn_name0, stat_ts_mod, file_ts_mod))
+                #logger.info("start check file: {}. save mod {}, file mod  {}".format(fn_name0, stat_ts_mod, file_ts_mod))
                 if stat_ts_mod >= file_ts_mod:                    
                     return True
             else:
@@ -476,12 +476,11 @@ class scan_1c_logs(object):
             logger.exception()
             res = False
         finally:
+            if not res:
+                f_since = self.since_find(fn_name_2_since)
+                self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
+            self.since_save()
             if self.runloglastpos and j > 0:
-                if not res:
-                    f_since = self.since_find(fn_name_2_since)
-                    self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
-                self.since_save()
-            if j > 0:
                 logger.info("Load {}, current line {}".format(fn_name, i))
         return res
 

@@ -180,16 +180,16 @@ class send_2_elastic(scan_1c_logs):
         event = dict(self.events).setdefault(mess[8])
         mdata = dict(self.metadata).setdefault(mess[11])
         # пропускаем начало и конец транзакций обмена
-        if user == "wsdl" and mess[10] == '' and mess[11]=="0" and mess[9] == "I":            
+        if user in ["wsdl", "1C"] and mess[10] == '' and mess[11]=="0" and mess[9] == "I":            
             logger.debug("Skip {} {}".format(rec_id, mess))
             return False
 
         #mdata_guid = self.metadata_guid[mess[11]]
         server = dict(self.servers).setdefault(mess[14])
         p = dict(self.ports).setdefault(mess[15])
-        portadv = dict(self.portsadv).setdefault(mess[16])
+        portadv = dict(self.portsadv).setdefault(mess[16])        
         doc = {
-                '@timestamp': datetime.strptime(mess[0], "%Y%m%d%H%M%S"),
+                '@timestamp': datetime.strptime(mess[0]+"+0300", "%Y%m%d%H%M%S%z"),
                 "User": user,
                 "UserId": mess[4],
                 "Data1": mess[12],
@@ -216,7 +216,7 @@ class send_2_elastic(scan_1c_logs):
                 "Session": mess[17]
             }
         index_date = "-" + mess[0][:8]
-        self.store_record(rec_id, doc, index_date)
+        #self.store_record(rec_id, doc, index_date)
         logger.debug("{} {}".format(rec_id, mess))
         return True
 
