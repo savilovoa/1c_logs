@@ -376,7 +376,7 @@ class scan_1c_logs(object):
 
                             elif mi == 2:
                                 s = line[2]
-                                if s in ["U", "S", "R", "N"]:
+                                if s in ["U", "S", "R", "N", "D"]:
                                     message = message + line[:-1]
                                     mi = 4
                                     if s == "U":
