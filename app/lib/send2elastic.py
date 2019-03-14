@@ -216,7 +216,7 @@ class send_2_elastic(scan_1c_logs):
                 "Session": mess[17]
             }
         index_date = "-" + mess[0][:8]
-        #self.store_record(rec_id, doc, index_date)
+        self.store_record(rec_id, doc, index_date)
         logger.debug("{} {}".format(rec_id, mess))
         return True
 
