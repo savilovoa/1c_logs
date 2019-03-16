@@ -5,38 +5,37 @@ import sys
 import os
 from os import path
 from elasticsearch import Elasticsearch
-from logs_1c import scan_1c_logs, logger
+from logs_1c import scan_1c_logs, logger, config, multilogs
 from datetime import datetime
 import time
-from logs_1c import config
+
 
 def connect_elasticsearch(connect = []):
     es = None
+    connected = False
     try:
         es = Elasticsearch(connect)
         if es.ping():
             logger.info("Connection SUCCESS!")
+            connected = True
         else:
             logger.info("Not connection in {}".format(connect))
     except:
         logger.error("Connection in {}".format(connect))
     finally:
-        return es
-    
+        return connected, es
 
 
-class send_2_elastic():    
+
+class send_2_elastic():
     es = None
-    def __init__(self, dbname, logsdir, sincefn = "since.dat"):        
-        super(send_2_elastic, self).__init__(dbname, logsdir, sincefn)
-        if config.has_option("ELASTICSEARCH", "host"):
-            self.connect[0]['host'] = config.get("ELASTICSEARCH", "host")
-        if config.has_option("ELASTICSEARCH", "port"):
-            self.connect[0]["port"] = config.getint("ELASTICSEARCH", "port")
-        
+    def __init__(self, dbname, logsdir, es):
+        self.es = es
+        super(send_2_elastic, self).__init__(dbname, logsdir)
+
 
     def create_index(self, indexname):
-        created = False        
+        created = False
         # index settings
         settings = {
             "settings": {
@@ -138,7 +137,7 @@ class send_2_elastic():
             },
             "aliases": {}
         }
-        try:            
+        try:
             if not self.es.indices.exists(indexname):
                 # Ignore 400 means to ignore "Index Already Exist" error.
                 self.es.indices.create(index=indexname, body=settings)
@@ -153,11 +152,11 @@ class send_2_elastic():
         try:
             if not self.create_index(index_name):
                 raise RuntimeError("Not create index {}".format(index_name))
-            self.es.index(index=index_name, id=rec_id, doc_type='log1c', body=record)                                    
+            self.es.index(index=index_name, id=rec_id, doc_type='log1c', body=record)
             logger.debug('{}: {}'.format(self.index_name, record))
         except Exception:
             logger.error("STORE RECORD {} {} {}".format(index_name, rec_id, record), exc_info=True)
-            
+
 
 
 
@@ -169,14 +168,14 @@ class send_2_elastic():
         event = dict(self.events).setdefault(mess[8])
         mdata = dict(self.metadata).setdefault(mess[11])
         # пропускаем начало и конец транзакций обмена
-        if user in ["wsdl", "1C"] and mess[10] == '' and mess[11]=="0" and mess[9] == "I":            
+        if user in ["wsdl", "1C"] and mess[10] == '' and mess[11]=="0" and mess[9] == "I":
             logger.debug("Skip {} {}".format(rec_id, mess))
             return False
 
         #mdata_guid = self.metadata_guid[mess[11]]
         server = dict(self.servers).setdefault(mess[14])
         p = dict(self.ports).setdefault(mess[15])
-        portadv = dict(self.portsadv).setdefault(mess[16])        
+        portadv = dict(self.portsadv).setdefault(mess[16])
         doc = {
                 '@timestamp': datetime.strptime(mess[0]+"+0300", "%Y%m%d%H%M%S%z"),
                 "User": user,
@@ -210,6 +209,23 @@ class send_2_elastic():
         return True
 
 
+class multilogs_elk(multilogs):
+    es = None
+    connect = ["host": "localhost", "port": 9200]
+
+    def __init__(self):
+        super(multilogs_elk, self).__init__()
+        if config.has_option("ELASTICSEARCH", "host"):
+            self.connect[0]['host'] = config.get("ELASTICSEARCH", "host")
+        if config.has_option("ELASTICSEARCH", "port"):
+            self.connect[0]["port"] = config.getint("ELASTICSEARCH", "port")
+
+
+    def logs_add(self, dbname, dirname):
+        l = send_2_elastic(dbname, dirname)
+        self.logs.append(l)
+        
+
 
 
 i = 0
@@ -217,7 +233,7 @@ logs = send_2_elastic()
 while True:
     es = connect_elasticsearch()
     if es.
-        
+
         logs.loads()
     time.sleep(30)
     i += 1
