@@ -1,0 +1,18 @@
+[2019-03-16 16:27:54] INFO - Start scaning c:/Temp/lgp
+[2019-03-16 16:27:54] ERROR - ERP_PROD Error scan files
+Traceback (most recent call last):
+  File "c:\Prog\1c_logs\app\lib\logs_1c.py", line 501, in scandirs
+    for fn_name in os.listdir(logsdir):
+NameError: name 'logsdir' is not defined
+[2019-03-16 17:12:00] INFO - Start scaning c:/Temp/lgp\doc_ob/1Cv8Log
+[2019-03-16 17:12:00] ERROR - doc_ob Error scan files
+Traceback (most recent call last):
+  File "c:\Prog\1c_logs\app\lib\logs_1c.py", line 503, in scandirs
+    for fn_name in os.listdir(logsdir):
+NameError: name 'logsdir' is not defined
+[2019-03-16 17:12:05] INFO - Start scaning c:/Temp/lgp\erp/1Cv8Log
+[2019-03-16 17:12:05] ERROR - erp Error scan files
+Traceback (most recent call last):
+  File "c:\Prog\1c_logs\app\lib\logs_1c.py", line 503, in scandirs
+    for fn_name in os.listdir(logsdir):
+NameError: name 'logsdir' is not defined

@@ -9,10 +9,15 @@ from logs_1c import scan_1c_logs, logger, config, multilogs
 from datetime import datetime
 import time
 
+test_not_elk = False
+if config.has_option("ELASTICSEARCH", "test_not_elk"):
+    test_not_elk = config.get("ELASTICSEARCH", "test_not_elk")
 
 def connect_elasticsearch(connect = []):
     es = None
     connected = False
+    if test_not_elk:
+        return True, None
     try:
         es = Elasticsearch(connect)
         if es.ping():
@@ -27,7 +32,7 @@ def connect_elasticsearch(connect = []):
 
 
 
-class send_2_elastic():
+class send_2_elastic(scan_1c_logs):
     es = None
     def __init__(self, dbname, logsdir, es):
         self.es = es
@@ -150,6 +155,8 @@ class send_2_elastic():
 
     def store_record(self, rec_id, record, indexname):
         try:
+            if self.es == None:
+                return True
             if not self.create_index(index_name):
                 raise RuntimeError("Not create index {}".format(index_name))
             self.es.index(index=index_name, id=rec_id, doc_type='log1c', body=record)
@@ -211,7 +218,7 @@ class send_2_elastic():
 
 class multilogs_elk(multilogs):
     es = None
-    connect = ["host": "localhost", "port": 9200]
+    connect = [{"host": "localhost", "port": 9200}]
 
     def __init__(self):
         super(multilogs_elk, self).__init__()
@@ -222,21 +229,33 @@ class multilogs_elk(multilogs):
 
 
     def logs_add(self, dbname, dirname):
-        l = send_2_elastic(dbname, dirname)
+        l = send_2_elastic(dbname, dirname, self.es)
         self.logs.append(l)
+
+    def start(self):
         
+        i = 0
+        while True:
+            connected, self.es = connect_elasticsearch(self.connect)
+            if connected:
+                # расставляем ссылки на объект elastic
+                self.logs_build()
+                e = 0
+                while True:
+                    for l in self.logs:
+                        if not l.scandirs():
+                            e += 1
+                    time.sleep(self.rescan_sleep)
+                    if e > 10000:
+                        logger.error("Much errors. Exit(1)")
+                        sys.exit(1)                        
+            else:
+                time.sleep(30)
+                i += 1
+                if i > 1000:
+                    logger.error("Not connection in {}".format(self.connect))
+                    sys.exit(1)
 
 
-
-i = 0
-logs = send_2_elastic()
-while True:
-    es = connect_elasticsearch()
-    if es.
-
-        logs.loads()
-    time.sleep(30)
-    i += 1
-    if i > 1000:
-        logger.error("Not connection in {}".format(self.connect))
-        sys.exit(1)
+m = multilogs_elk()
+m.start()

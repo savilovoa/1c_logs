@@ -487,6 +487,7 @@ class scan_1c_logs(object):
                     self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
                 else:
                     self.sincedata[fn_name_2_since] = [f_since[0], file_ts_mod]
+                    res = True
             self.since_save()
             if self.runloglastpos and j > 0:
                 logger.info("{} Load {}, current line {}".format(self.dbname, fn_name, i))
@@ -495,8 +496,9 @@ class scan_1c_logs(object):
     # Сканирование каталога с файлами логгирования
     def scandirs(self):
         try:
+            res = True
             logger.info("Start scaning {}".format(self.logsdir))
-
+            
             # Ищем словарь данных
             for fn_name in os.listdir(logsdir):
                 if fn_name.endswith(".lgf"):
@@ -504,10 +506,14 @@ class scan_1c_logs(object):
             # Ищем логи
             for fn_name in os.listdir(name):
                 if fn_name.endswith(".lgp"):
-                    self.scan_file(os.path.join(self.logsdir, fn_name))
-
+                    if not self.scan_file(os.path.join(self.logsdir, fn_name)):
+                        res = False
+                    
+            
         except Exception:
             logger.error("{} Error scan files".format(self.dbname), exc_info=True)
+        finally:
+            return res
 
 
 class multilogs(object):
@@ -522,12 +528,12 @@ class multilogs(object):
     def __init__(self):
         if config.has_option("GLOBAL", "dirdata"):
             self.logsdir = config.get("GLOBAL", "dirdata")
-        if config.has_optioLfn("GLOBAL", "rescan"):
+        if config.has_option("GLOBAL", "rescan"):
             self.rescan = config.get("GLOBAL", "rescan")
         if config.has_option("GLOBAL", "rescan_sleep"):
             self.rescan_sleep = config.getint("GLOBAL", "rescan_sleep")
         if config.has_option("GLOBAL", "multidb"):
-            self.muiltidb = config.getboolean("GLOBAL", "multidb")
+            self.multidb = config.getboolean("GLOBAL", "multidb")
         if config.has_option("GLOBAL", "indexname_default"):
             self.dbname = config.get("GLOBAL", "indexname_default")
 
@@ -542,8 +548,8 @@ class multilogs(object):
     def logs_build(self):
         if self.multidb:
             for f in os.listdir(self.logsdir):
-                if f.is_dir():
-                    s = f + "/1Cv8Log"
+                if os.path.isdir(os.path.join(self.logsdir, f)):
+                    s = os.path.join(self.logsdir, f + "/1Cv8Log")
                     if os.path.exists(s):
                         self.logs_add(f, s)
         else:
