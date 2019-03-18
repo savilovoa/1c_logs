@@ -62,9 +62,9 @@ logger.addHandler(handler)
 logger.addHandler(handler2)
 logger.addHandler(handler3)
 
-logger.info ("debug " + config.get("GLOBAL", "debug"))
-logger.info ("elk " + config.get("ELASTICSEARCH", "test_not_elk"))
-logger.info ("dirsince " + config.get("LOGS", "dirsince"))
+#logger.info ("debug " + config.get("GLOBAL", "debug"))
+#logger.info ("elk " + config.get("ELASTICSEARCH", "test_not_elk"))
+#logger.info ("dirsince " + config.get("LOGS", "dirsince"))
 
 
 pattern_0 = r"\{\d{14},\w,\n"
