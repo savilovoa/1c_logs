@@ -15,8 +15,8 @@ time.tzset()
 # настройка логгирования
 logger = logging.getLogger("logs_1c")
 
-formatter_err = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s")
-formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
+formatter_err = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", datefmt='%Y-%m-%d %H:%M:%S')
 # create console handler and set level to info
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
