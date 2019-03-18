@@ -9,6 +9,9 @@ import json
 from os import path
 import time
 
+os.environ['TZ'] = 'Europe/Moscow'
+time.tzset()
+
 # настройка логгирования
 logger = logging.getLogger("logs_1c")
 
