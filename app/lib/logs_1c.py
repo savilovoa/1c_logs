@@ -101,7 +101,8 @@ class scan_1c_logs(object):
         if config.has_option("LOGS", "runloglastpos"):
             self.runloglastpos = config.getboolean("GLOBAL", "runloglastpos")
 
-        if config.has_option("LOGS", "dirsince"):            
+        if config.has_option("LOGS", "dirsince"):
+            s = config.get("LOGS", "dirsince")
             logger.info(s)
             self.sincefilename = os.path.join(config.get("LOGS", "dirsince"), dbname + ".since")
         else:
