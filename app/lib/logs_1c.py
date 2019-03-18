@@ -102,12 +102,14 @@ class scan_1c_logs(object):
             self.runloglastpos = config.getboolean("GLOBAL", "runloglastpos")
 
         if config.has_option("LOGS", "dirsince"):
-            self.sincefilename = os.path.join(config.get("GLOBAL", "dirsince"), dbname + ".since")
+            s = config.get("GLOBAL", "dirsince")
+            logger.info(s)
+            self.sincefilename = os.path.join(s, dbname + ".since")
         else:
             self.sincefilename = dbname + ".since"
-        logger.info("since: {}".format(self.sincefilename))
+            
+        logger.info("Add scaning: db {}, since {}, dir {}".format(self.dbname, self.sincefilename, self.logsdir))
         self.since_load()
-
 
     def since_load(self):
         if os.path.exists(self.sincefilename):
