@@ -95,6 +95,7 @@ class scan_1c_logs(object):
     runloglastpos = True
     sincedata = {}
     lgf_loaded = False
+    first = True
 
 
     def __init__(self, dbname, logsdir):
@@ -507,7 +508,9 @@ class scan_1c_logs(object):
     def scandirs(self):
         try:
             res = True
-            logger.info("Start scaning {}".format(self.logsdir))
+            if self.first:
+                logger.info("Start scaning {}".format(self.logsdir))
+                self.first = False
             
             # Ищем словарь данных
             for fn_name in os.listdir(self.logsdir):
@@ -516,8 +519,8 @@ class scan_1c_logs(object):
             # Ищем логи
             for fn_name in os.listdir(self.logsdir):
                 if fn_name.endswith(".lgp"):
-                    if not self.scan_file(os.path.join(self.logsdir, fn_name)):
-                        res = False
+                    res = self.scan_file(os.path.join(self.logsdir, fn_name))
+                    
                     
             
         except Exception:
