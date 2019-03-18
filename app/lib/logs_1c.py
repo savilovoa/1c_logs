@@ -500,18 +500,18 @@ class scan_1c_logs(object):
             logger.info("Start scaning {}".format(self.logsdir))
             
             # Ищем словарь данных
-            for fn_name in os.listdir(logsdir):
+            for fn_name in os.listdir(self.logsdir):
                 if fn_name.endswith(".lgf"):
                     self.lgf_load(os.path.join(self.logsdir, fn_name))
             # Ищем логи
-            for fn_name in os.listdir(name):
+            for fn_name in os.listdir(self.logsdir):
                 if fn_name.endswith(".lgp"):
                     if not self.scan_file(os.path.join(self.logsdir, fn_name)):
                         res = False
                     
             
         except Exception:
-            logger.error("{} Error scan files".format(self.dbname), exc_info=True)
+            logger.error("{} Error scan files {}".format(self.dbname, self.logsdir), exc_info=True)
         finally:
             return res
 
