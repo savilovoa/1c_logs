@@ -1,0 +1,39 @@
+elasticsearch:
+   image: docker.elastic.co/elasticsearch/elasticsearch:6.6.0
+   container_name: elasticsearch
+   restart: always
+   ports:
+      - 9200:9200
+   volumes:
+      - /data/Elastic:/usr/share/elasticsearch/data
+
+#logstash:
+#   build: logstash
+#   restart: always
+#   log_opt:
+#      max-size: "10m"
+#      max-file: "10"
+#   command: logstash -f /config-dir/logstash.conf
+#   ports:
+#     - 5044:5044
+#   links:
+#     - elasticsearch
+
+kibana:
+   image: docker.elastic.co/kibana/kibana:6.6.0
+   restart: always
+   ports:
+      - 5601:5601
+   links:
+      - elasticsearch
+
+logs_1c:
+    image: savilovoa/1c_logs
+    container_name: 1c_logs
+    restart: always
+    volumes:
+      - /var/lib/1c_logs/since:/var/lib/1c_logs/since
+      - /data/1c_logs:/var/lib/1c_logs/data
+      - /var/log/1c_logs:/var/log/1c_logs
+    links:
+      - elasticsearch

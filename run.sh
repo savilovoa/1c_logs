@@ -1,4 +1,3 @@
-!#bin/sh
 
 docker run --name 1c_logs --restart=always \
   -v /var/lib/1c_logs/since:/var/lib/1c_logs/since \
