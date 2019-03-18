@@ -11,16 +11,14 @@ import time
 
 # настройка логгирования
 logger = logging.getLogger("logs_1c")
-logger.setLevel(logging.INFO)
 
 formatter_err = logging.Formatter("[%(asctime)s] [LINE:%(lineno)d] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
 formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s", datefmt = '%Y-%m-%d %H:%M:%S')
 # create console handler and set level to info
 handler = logging.StreamHandler()
 handler.setLevel(logging.DEBUG)
-
 handler.setFormatter(formatter)
-logger.addHandler(handler)
+
 
 sett_filename = "logs_1c.conf"
 if os.path.exists(os.path.join("/usr/local/etc/1c_logs", sett_filename)):
@@ -44,18 +42,23 @@ else:
 handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
 handler2.setLevel(logging.ERROR)
 handler2.setFormatter(formatter_err)
-logger.addHandler(handler2)
 
 handler3 = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+handler3.setFormatter(formatter)
+
 if config.has_option("GLOBAL", "debug"):
     if config.getboolean("GLOBAL", "debug"):
         handler3.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
     else:
         handler3.setLevel(logging.INFO)
+        logger.setLevel(logging.INFO)        
 else:
     handler3.setLevel(logging.INFO)
-handler3.setFormatter(formatter)
+    logger.setLevel(logging.INFO)
+  
+logger.addHandler(handler)
+logger.addHandler(handler2)
 logger.addHandler(handler3)
 
 pattern_0 = r"\{\d{14},\w,\n"
@@ -102,7 +105,7 @@ class scan_1c_logs(object):
             self.sincefilename = os.path.join(config.get("GLOBAL", "dirsince"), dbname + ".since")
         else:
             self.sincefilename = dbname + ".since"
-        logger.debug("since: {}".format(self.sincefilename))
+        logger.info("since: {}".format(self.sincefilename))
         self.since_load()
 
 
