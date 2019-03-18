@@ -102,7 +102,7 @@ class scan_1c_logs(object):
             self.sincefilename = os.path.join(config.get("GLOBAL", "dirsince"), dbname + ".since")
         else:
             self.sincefilename = dbname + ".since"
-        logger.info("since: ".format(self.sincefilename))
+        logger.info("since: {}".format(self.sincefilename))
         self.since_load()
 
 
