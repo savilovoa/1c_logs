@@ -210,7 +210,7 @@ class send_2_elastic(scan_1c_logs):
                 "EventId": mess[8],
                 "Session": mess[17]
             }
-        indexname = indexname + "-" + mess[0][:8]
+        indexname = self.dbname + "-" + mess[0][:8]
         self.store_record(rec_id, doc, indexname)
         logger.debug("{} {} {}".format(indexname, rec_id, mess))
         return True

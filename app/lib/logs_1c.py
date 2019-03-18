@@ -62,6 +62,11 @@ logger.addHandler(handler)
 logger.addHandler(handler2)
 logger.addHandler(handler3)
 
+logger.info ("debug " + config.get("GLOBAL", "debug"))
+logger.info ("elk " + config.get("ELASTICSEARCH", "test_not_elk"))
+logger.info ("dirsince " + config.get("LOGS", "dirsince"))
+
+
 pattern_0 = r"\{\d{14},\w,\n"
 pattern_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,".*",\d+,\n'
 pattern_1_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,"[^"]*\n'
@@ -101,10 +106,8 @@ class scan_1c_logs(object):
 
         if config.has_option("LOGS", "runloglastpos"):
             self.runloglastpos = config.getboolean("GLOBAL", "runloglastpos")
-        s = ""
+
         if config.has_option("LOGS", "dirsince"):
-            s = config.get("LOGS", "dirsince")
-            logger.info(s)
             self.sincefilename = os.path.join(config.get("LOGS", "dirsince"), dbname + ".since")
         else:
             self.sincefilename = dbname + ".since"
