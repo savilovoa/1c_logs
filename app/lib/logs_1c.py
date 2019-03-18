@@ -22,6 +22,41 @@ handler.setLevel(logging.DEBUG)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
 
+sett_filename = "logs_1c.conf"
+if os.path.exists(os.path.join("/usr/local/etc/1c_logs", sett_filename)):
+    sett_filename = os.path.join("/usr/local/etc/1c_logs", "logs_1c.conf")
+if os.path.exists(sett_filename):
+    config = configparser.ConfigParser()
+    config.read(sett_filename)
+else:
+    raise RuntimeError("Not find file conf {}".format(sett_filename))
+
+if config.has_option("GLOBAL", "dirlog"):
+    dirlog = config.get("GLOBAL", "dirlog")
+    log_filename = os.path.join(dirlog, 'logs_1c.log')
+    logerr_filename = os.path.join(dirlog, 'logs_1c_err.log')
+else:
+    log_filename = "logs_1c.log"
+    logerr_filename = 'logs_1c_err.log'
+
+
+# create error file handler and set level to error
+handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+handler2.setLevel(logging.ERROR)
+handler2.setFormatter(formatter_err)
+logger.addHandler(handler2)
+
+handler3 = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
+if config.has_option("GLOBAL", "debug"):
+    if config.getboolean("GLOBAL", "debug"):
+        handler3.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
+    else:
+        handler3.setLevel(logging.INFO)
+else:
+    handler3.setLevel(logging.INFO)
+handler3.setFormatter(formatter)
+logger.addHandler(handler3)
 
 pattern_0 = r"\{\d{14},\w,\n"
 pattern_1 = r'\{\w+,\w+\},\d*,\d*,\d+,\d+,\d+,\w,".*",\d+,\n'
@@ -36,7 +71,8 @@ pattern_lgf_1 = r'\{\d+,\w+-\w+-\w+-\w+-\w+,"[^"]*",\d+\}'
 pattern_lgf_2 = r'\{\d+,\d+,\d+\}'
 
 class scan_1c_logs(object):
-
+    dbname = ""
+    logsdir = ""
     users = {}      #1
     users_guid = {}
     computers = {}  #2
@@ -47,56 +83,25 @@ class scan_1c_logs(object):
     servers = {}    #6
     ports = {}      #7
     portsadv = {}   #8
-    sincefilename = "since.dat"
     runloglastpos = True
     sincedata = {}
-    logsdir = "../in"
     lgf_loaded = False
-    rescan = False
-    rescan_sleep = 5
-    debug = False
 
-    def __init__(self):
-        sett_filename = "logs_1c.conf"
-        if os.path.exists(os.path.join("/usr/local/etc/1c_logs", sett_filename)):
-            sett_filename = os.path.join("/usr/local/etc/1c_logs", "logs_1c.conf")
-        if os.path.exists(sett_filename):
-            self.config = configparser.ConfigParser()
-            self.config.read(sett_filename)
-            if self.config.has_option("GLOBAL", "runloglastpos"):
-                self.runloglastpos = self.config.getboolean("GLOBAL", "runloglastpos")
-            if self.config.has_option("GLOBAL", "dirdata"):
-                self.logsdir = self.config.get("GLOBAL", "dirdata")
-            if self.config.has_option("GLOBAL", "rescan"):
-                self.rescan = self.config.get("GLOBAL", "rescan")
-            if self.config.has_option("GLOBAL", "rescan_sleep"):
-                self.rescan_sleep = self.config.getint("GLOBAL", "rescan_sleep")
-            if self.config.has_option("GLOBAL", "dirlog"):
-                dirlog = self.config.get("GLOBAL", "dirlog")
-                log_filename = os.path.join(dirlog, 'logs_1c.log')
-                logerr_filename = os.path.join(dirlog, 'logs_1c_err.log')
-            else:
-                log_filename = "logs_1c.log"
-                logerr_filename = 'logs_1c_err.log'
-            if self.config.has_option("GLOBAL", "dirsince"):
-                self.sincefilename = os.path.join(self.config.get("GLOBAL", "dirsince"), "since.dat")
 
-            if self.config.has_option("GLOBAL", "debug"):
-                self.debug = self.config.getboolean("GLOBAL", "debug")
-            # create error file handler and set level to error
-            handler2 = RotatingFileHandler(logerr_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
-            handler2.setLevel(logging.ERROR)
-            handler2.setFormatter(formatter_err)
-            logger.addHandler(handler2)
+    def __init__(self, dbname, logsdir):
+        self.dbname = dbname
+        self.logsdir = logsdir
 
-            handler3 = RotatingFileHandler(log_filename, mode = 'a', maxBytes = 10485760, backupCount = 10, encoding = None, delay = 0)
-            if self.debug:
-                handler3.setLevel(logging.DEBUG)
-            else:
-                handler3.setLevel(logging.INFO)
-            handler3.setFormatter(formatter)
-            logger.addHandler(handler3)
+        if self.dbname == "":
+            raise RuntimeError("Empty dbname (indexname_default)")
 
+        if config.has_option("LOGS", "runloglastpos"):
+            self.runloglastpos = config.getboolean("GLOBAL", "runloglastpos")
+
+        if config.has_option("LOGS", "dirsince"):
+            self.sincefilename = os.path.join(config.get("GLOBAL", "dirsince"), dbname + ".since")
+        else:
+            self.sincefilename = dbname + ".since"
 
         self.since_load()
 
@@ -176,16 +181,16 @@ class scan_1c_logs(object):
                                 return False
 
         except Exception:
-            logger.error('Error load lgf-file {}'.format(filename), exc_info=True)            
+            logger.error('Error load lgf-file {}'.format(filename), exc_info=True)
             return False
         self.sincedata["1cv8"] = [0, file_ts_mod]
         self.since_save
         self.lgf_loaded = True
-        logger.info("Load {}".format(filename))
+        logger.info("{} Load {}".format(self.dbname, filename))
         return True
 
     def message_add(self, rec_id, mess):
-        logger.debug("{} {}".format(rec_id, message))
+        logger.debug("{} {} {}".format(self.dbname, rec_id, message))
 
 
     def scan_file(self, fn_name):
@@ -247,8 +252,8 @@ class scan_1c_logs(object):
             else:
                 logger.error('Error 1 - неполный массив данных {}, а ожидалось {}: {} \n'.format(i, lenarr, l))
                 return False
-        
-        
+
+
         if self.runloglastpos:
             fn_name0 = path.basename(fn_name)
             fn_name_2_since = path.splitext(fn_name0)[0]
@@ -260,14 +265,14 @@ class scan_1c_logs(object):
                 line_begin = f_since[0]
                 stat_ts_mod = f_since[1]
                 #logger.info("start check file: {}. save mod {}, file mod  {}".format(fn_name0, stat_ts_mod, file_ts_mod))
-                if stat_ts_mod >= file_ts_mod:                    
+                if stat_ts_mod >= file_ts_mod:
                     return True
             else:
                 line_begin = 2
-            
+
         else:
             line_begin = 2
-        logger.info("start check file: {}. Position {}".format(fn_name0, line_begin))
+        logger.info("{} start check file: {}. Position {}".format(self.dbname, fn_name0, line_begin))
         res = False
         len_figure = 0
         comm = False
@@ -335,7 +340,7 @@ class scan_1c_logs(object):
                                                 res = False
                                                 break
                                         else:
-                                            logger.error('Error 1: {} \nMessage: {}'.format(line, message))
+                                            logger.error('{} Error 1: {} \nMessage: {}'.format(self.dbname, line, message))
                                             res = False
                                             break
                                     else:
@@ -361,7 +366,7 @@ class scan_1c_logs(object):
                                             mess.append(comm_multiline + line[:p2-1])
                                             mess.append(line[p2+2:-2])
                                         else:
-                                            logger.error('Error 1: {} \nMessage: {}'.format(line, message))
+                                            logger.error('{} Error 1: {} \nMessage: {}'.format(self.dbname, line, message))
                                             res = False
                                             break
                                     elif re.fullmatch(pattern_0, line) == None:
@@ -369,7 +374,7 @@ class scan_1c_logs(object):
                                         mess_multiline = mess_multiline + line
                                         comm_multiline = comm_multiline + line
                                     else:
-                                        logger.error('Error 1 line (find begin pattern, but close pattern 1 not run): .*",\n: {} \nMessage: {}'.format(line, message))
+                                        logger.error('{} Error 1 line (find begin pattern, but close pattern 1 not run): .*",\n: {} \nMessage: {}'.format(self.dbname, line, message))
                                         res = False
                                         break
 
@@ -394,12 +399,12 @@ class scan_1c_logs(object):
                                     elif s == "N":
                                         if not line_to_arr(mess, line[1:-2], 5, 7):
                                             res = False
-                                            break      
+                                            break
                                     elif s == "D":
                                         if not line_to_arr(mess, line[1:-2], 5, 7):
                                             res = False
-                                            break      
-                                        
+                                            break
+
                                 elif line[2] == "P":
                                     len_figure = 2
                                     mi = 3
@@ -418,8 +423,8 @@ class scan_1c_logs(object):
                                     message = message + l[:-1]
                                     mess_multiline = l
                                 else:
-                                    raise RuntimeError("Unknown type {} - expect [U,S,R,P]".format(line[2]))
-                                
+                                    raise RuntimeError("{} Unknown type {} - expect [U,S,R,P,N,D]".format(self.dbname, line[2]))
+
 
                             elif mi == 3:
                                 l = ""
@@ -453,7 +458,7 @@ class scan_1c_logs(object):
                                     message = message + line[:-1]
                                     mi = 5
                                 else:
-                                    logger.error('Error 4: {} \nMessage: {}'.format(line, message))
+                                    logger.error('{} Error 4: {} \nMessage: {}'.format(self.dbname, line, message))
                                     res = False
                                     break
                             elif mi == 5:
@@ -465,9 +470,9 @@ class scan_1c_logs(object):
                                     if self.runloglastpos:
                                         self.sincedata[fn_name_2_since] = [i, file_ts_mod]
                                     res = True
-                                    logger.debug('{}: {}'.format(j, message))
+                                    logger.debug('{} {}: {}'.format(self.dbname, j, message))
                                 else:
-                                    logger.error('Error 5: {} \nMessage: {}'.format(line, message))
+                                    logger.error('{} Error 5: {} \nMessage: {}'.format(self.dbname, line, message))
                                     res = False
                                     break
 
@@ -478,35 +483,74 @@ class scan_1c_logs(object):
         finally:
             if not res:
                 f_since = self.since_find(fn_name_2_since)
-                self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
+                if i > f_since[0]:
+                    self.sincedata[fn_name_2_since] = [f_since[0], 0.0]
+                else:
+                    self.sincedata[fn_name_2_since] = [f_since[0], file_ts_mod]
+                    res = True
             self.since_save()
             if self.runloglastpos and j > 0:
-                logger.info("Load {}, current line {}".format(fn_name, i))
+                logger.info("{} Load {}, current line {}".format(self.dbname, fn_name, i))
         return res
 
-    def loads(self, logsdir=""):
-        if logsdir != "":
-            self.logsdir = logsdir
+    # Сканирование каталога с файлами логгирования
+    def scandirs(self):
         try:
-            i = 0
-            while True:
-                if i > 1000 or i == 0:
-                    logger.info("Start scaning {}".format(self.logsdir))
-                    i = 0
-
-                for fn_name in os.listdir(self.logsdir):
-                #print(os.path.join(self.logsdir, fn_name))
-                    if fn_name.endswith(".lgf"):
-                        self.lgf_load(os.path.join(self.logsdir, fn_name))
-                for fn_name in os.listdir(self.logsdir):
-                    if fn_name.endswith(".lgp"):
-                        self.scan_file(os.path.join(self.logsdir, fn_name))
-                i += 1
-                if not self.rescan:
-                    break
-                logger.debug("Sleep {}".format(self.rescan_sleep))
-                time.sleep(self.rescan_sleep)
-
-        except Exception:
-            logger.error("Error scan files", exc_info=True)
+            res = True
+            logger.info("Start scaning {}".format(self.logsdir))
             
+            # Ищем словарь данных
+            for fn_name in os.listdir(logsdir):
+                if fn_name.endswith(".lgf"):
+                    self.lgf_load(os.path.join(self.logsdir, fn_name))
+            # Ищем логи
+            for fn_name in os.listdir(name):
+                if fn_name.endswith(".lgp"):
+                    if not self.scan_file(os.path.join(self.logsdir, fn_name)):
+                        res = False
+                    
+            
+        except Exception:
+            logger.error("{} Error scan files".format(self.dbname), exc_info=True)
+        finally:
+            return res
+
+
+class multilogs(object):
+    logsdir = ""
+    rescan = False
+    rescan_sleep = 5
+    debug = False
+    multidb = False
+    logs = []
+    dbname = ""
+
+    def __init__(self):
+        if config.has_option("GLOBAL", "dirdata"):
+            self.logsdir = config.get("GLOBAL", "dirdata")
+        if config.has_option("GLOBAL", "rescan"):
+            self.rescan = config.get("GLOBAL", "rescan")
+        if config.has_option("GLOBAL", "rescan_sleep"):
+            self.rescan_sleep = config.getint("GLOBAL", "rescan_sleep")
+        if config.has_option("GLOBAL", "multidb"):
+            self.multidb = config.getboolean("GLOBAL", "multidb")
+        if config.has_option("GLOBAL", "indexname_default"):
+            self.dbname = config.get("GLOBAL", "indexname_default")
+
+        if not self.multidb and self.dbname == "":
+            raise RuntimeError("Not indexname_default in conf for mode MULTIDB")
+
+    # Функция добавления DB логгирования
+    def logs_add(self, dbname, dirname):
+        pass
+
+    # ФОРМИРОВАНИЕ списка объектов логгирования
+    def logs_build(self):
+        if self.multidb:
+            for f in os.listdir(self.logsdir):
+                if os.path.isdir(os.path.join(self.logsdir, f)):
+                    s = os.path.join(self.logsdir, f + "/1Cv8Log")
+                    if os.path.exists(s):
+                        self.logs_add(f, s)
+        else:
+            self.logs_add(self.dbname, self.logsdir)
