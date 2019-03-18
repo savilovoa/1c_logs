@@ -149,7 +149,7 @@ class send_2_elastic(scan_1c_logs):
                 logger.info('create index {}'.format(indexname))
             created = True
         except Exception:
-            logger.error("CREATE INDEX {}".format(index_name), exc_info=True)
+            logger.error("CREATE INDEX {}".format(indexname), exc_info=True)
         finally:
             return created
 
@@ -158,8 +158,8 @@ class send_2_elastic(scan_1c_logs):
             if self.es == None:
                 return True
             if not self.create_index(indexname):
-                raise RuntimeError("Not create index {}".format(index_name))
-            self.es.index(index=index_name, id=rec_id, doc_type='log1c', body=record)
+                raise RuntimeError("Not create index {}".format(indexname))
+            self.es.index(index=indexname, id=rec_id, doc_type='log1c', body=record)
             logger.debug('{}: {}'.format(indexname, record))
         except Exception:
             logger.error("STORE RECORD {} {} {}".format(indexname, rec_id, record), exc_info=True)
