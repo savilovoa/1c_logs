@@ -50,6 +50,7 @@ if config.has_option("GLOBAL", "debug"):
     if config.getboolean("GLOBAL", "debug"):
         handler3.setLevel(logging.DEBUG)
         logger.setLevel(logging.DEBUG)
+        logger.info("Debug mode on")
     else:
         handler3.setLevel(logging.INFO)
         logger.setLevel(logging.INFO)        
@@ -100,13 +101,14 @@ class scan_1c_logs(object):
 
         if config.has_option("LOGS", "runloglastpos"):
             self.runloglastpos = config.getboolean("GLOBAL", "runloglastpos")
-
+        s = ""
         if config.has_option("LOGS", "dirsince"):
             s = config.get("LOGS", "dirsince")
             logger.info(s)
             self.sincefilename = os.path.join(config.get("LOGS", "dirsince"), dbname + ".since")
         else:
             self.sincefilename = dbname + ".since"
+            logger.info("Not LOGS:dirsince")
             
         logger.info("Add scaning: db {}, since {}, dir {}".format(self.dbname, self.sincefilename, self.logsdir))
         self.since_load()
