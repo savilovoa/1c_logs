@@ -1,13 +1,18 @@
+# -*- coding: utf-8 -*-
+import logging
+from logging.handlers import RotatingFileHandler
 
-class foo1(object):
-    def p1(self):
-        print("Ok")
-    
-    
-class foo2(object):
-    def p2(self, obj):
-        l = obj()
-        l.p1()
-        
-f = foo2()
-f.p2(foo1)
+# настройка логгирования
+logger = logging.getLogger("log_test")
+logger.setLevel(logging.INFO)
+
+formatter = logging.Formatter("[%(asctime)s] %(levelname)s - %(message)s")
+# create console handler and set level to info
+handler = logging.StreamHandler()
+handler.setLevel(logging.INFO)
+handler.setFormatter(formatter)
+
+logger.addHandler(handler)
+logger.info("Test str")
+
+
