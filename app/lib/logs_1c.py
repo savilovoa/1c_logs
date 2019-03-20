@@ -272,14 +272,14 @@ class scan_1c_logs(object):
             fn_name0 = path.basename(fn_name)
             fn_name_2_since = path.splitext(fn_name0)[0]
             statbuf = os.stat(fn_name)
-            file_ts_mod = statbuf.st_mtime
+            file_ts_mod = statbuf.st_size
             f_since = self.since_find(fn_name_2_since)
 
             if f_since != []:
                 line_begin = f_since[0]
                 stat_ts_mod = f_since[1]
                 #logger.info("start check file: {}. save mod {}, file mod  {}".format(fn_name0, stat_ts_mod, file_ts_mod))
-                if stat_ts_mod >= file_ts_mod:
+                if stat_ts_mod == file_ts_mod:
                     return True
             else:
                 line_begin = 2
