@@ -19,13 +19,13 @@ elasticsearch:
 #   links:
 #     - elasticsearch
 
-#kibana:
-#  image: docker.elastic.co/kibana/kibana:6.6.0
-#   restart: always
-#   ports:
-#      - 5601:5601
-#   links:
-#      - elasticsearch
+kibana:
+    image: docker.elastic.co/kibana/kibana:6.6.0
+    restart: always
+    ports:
+      - 5601:5601
+    links:
+      - elasticsearch
 
 logs_1c:
     image: savilovoa/1c_logs
@@ -35,5 +35,5 @@ logs_1c:
       - /var/lib/1c_logs/since:/var/lib/1c_logs/since
       - /data/1c_logs:/var/lib/1c_logs/data
       - /var/log/1c_logs:/var/log/1c_logs
-#    links:
-#      - elasticsearch
+    links:
+      - elasticsearch

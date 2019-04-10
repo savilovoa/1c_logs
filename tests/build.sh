@@ -1,0 +1,1 @@
+docker build --tag savilovoa/1c_logs_test .

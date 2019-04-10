@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 import logging
+import os
 from logging.handlers import RotatingFileHandler
+import time
+
 
 # настройка логгирования
 logger = logging.getLogger("log_test")
@@ -12,7 +15,12 @@ handler = logging.StreamHandler()
 handler.setLevel(logging.INFO)
 handler.setFormatter(formatter)
 
+
+os.environ['TZ'] = 'Europe/Moscow'
+time.tzset()
+
 logger.addHandler(handler)
 logger.info("Test str")
+print (time.localtime())
 
 
