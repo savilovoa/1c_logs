@@ -37,3 +37,5 @@ logs_1c:
       - /var/log/1c_logs:/var/log/1c_logs
     links:
       - elasticsearch
+    depends_on:
+      - elasticsearch

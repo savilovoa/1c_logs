@@ -8,6 +8,7 @@ from elasticsearch import Elasticsearch
 from logs_1c import scan_1c_logs, logger, config, multilogs
 from datetime import datetime
 import time
+import loggingrocket
 
 test_not_elk = False
 if config.has_option("ELASTICSEARCH", "test_not_elk"):
