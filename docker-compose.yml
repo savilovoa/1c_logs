@@ -1,11 +1,30 @@
-elasticsearch:
-   image: docker.elastic.co/elasticsearch/elasticsearch:6.6.0
-   container_name: elasticsearch
-   restart: always
-   ports:
-      - 9200:9200
-   volumes:
-      - /data/Elastic:/usr/share/elasticsearch/data
+version: '2'
+services:
+    elasticsearch:
+        image: docker.elastic.co/elasticsearch/elasticsearch:6.6.0
+        container_name: elasticsearch
+        restart: always
+        ports:
+            - 9200:9200
+        volumes:
+            - /data/Elastic:/usr/share/elasticsearch/data
+
+
+    start_dependencies:
+        image: alpine:3.8
+        depends_on:
+            - elasticsearch
+        command: >
+          /bin/sh -c "
+            sleep 20;
+            while ! nc -z elk.id.local 9200;
+            do
+              echo sleeping;
+              sleep 1;
+            done;
+            echo Connected!;
+          "
+
 
 #logstash:
 #   build: logstash
@@ -19,23 +38,23 @@ elasticsearch:
 #   links:
 #     - elasticsearch
 
-kibana:
-    image: docker.elastic.co/kibana/kibana:6.6.0
-    restart: always
-    ports:
-      - 5601:5601
-    links:
-      - elasticsearch
+    kibana:
+      image: docker.elastic.co/kibana/kibana:6.6.0
+      restart: always
+      ports:
+        - 5601:5601
+      links:
+        - elasticsearch
 
-logs_1c:
-    image: savilovoa/1c_logs
-    container_name: 1c_logs
-    restart: always
-    volumes:
-      - /var/lib/1c_logs/since:/var/lib/1c_logs/since
-      - /data/1c_logs:/var/lib/1c_logs/data
-      - /var/log/1c_logs:/var/log/1c_logs
-    links:
-      - elasticsearch
-    depends_on:
-      - elasticsearch
+    logs_1c:
+       image: savilovoa/1c_logs
+       container_name: 1c_logs
+       restart: always
+       volumes:
+         - /var/lib/1c_logs/since:/var/lib/1c_logs/since
+         - /data/1c_logs:/var/lib/1c_logs/data
+         - /var/log/1c_logs:/var/log/1c_logs
+       links:
+         - elasticsearch
+       depends_on:
+         - start_dependencies
